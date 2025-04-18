@@ -1,82 +1,93 @@
 import psycopg2
-from psycopg2 import OperationalError
+from psycopg2 import sql, OperationalError
+from typing import List, Dict, Optional
+from .config import settings
 
-def connect_to_database():
-    try:
-        connection = psycopg2.connect(
-            dbname="Planer",
-            user="postgres",
-            password="2002",
-            host="localhost",
-            port="5432"
-        )
-        print("Успешно подключено к базе данных")
-        return connection
-    except OperationalError as e:
-        print(f"Ошибка подключения к базе данных: {e}")
-        return None
-    
-# Получение всех задач
-def get_all_tasks(connection):
-    try:
-        cursor = connection.cursor()
-        cursor.execute("SELECT * FROM Tasks")
-        tasks = cursor.fetchall()
-        cursor.close()
-        return tasks
-    except Exception as e:
-        print(f"Ошибка при получении задач: {e}")
-        return []
+class Database:
+    def __init__(self):
+        self.connection = None
+        self.connect()
 
-# Добавление новой задачи
-def add_task(connection, title, description, project_id, status="backlog"):
-    try:
-        cursor = connection.cursor()
-        cursor.execute(
-            """
-            INSERT INTO Tasks (title, description, project_id, status)
-            VALUES (%s, %s, %s, %s) RETURNING id
-            """,
-            (title, description, project_id, status)
-        )
-        task_id = cursor.fetchone()[0]
-        connection.commit()
-        cursor.close()
-        print(f"Задача добавлена с ID: {task_id}")
-        return task_id
-    except Exception as e:
-        print(f"Ошибка при добавлении задачи: {e}")
-        return None
-
-# Обновление задачи
-def update_task(connection, task_id, title=None, description=None, status=None):
-    try:
-        cursor = connection.cursor()
-        query = sql.SQL("""
-            UPDATE Tasks
-            SET {fields}
-            WHERE id = %s
-        """).format(
-            fields=sql.SQL(", ").join(
-                sql.Composed([sql.Identifier(field), sql.SQL(" = %s")])
-                for field in ["title", "description", "status"] if locals()[field] is not None
+    def connect(self):
+        """Установка соединения с PostgreSQL"""
+        try:
+            self.connection = psycopg2.connect(
+                dbname=settings.DB_NAME,
+                user=settings.DB_USER,
+                password=settings.DB_PASSWORD,
+                host=settings.DB_HOST,
+                port=settings.DB_PORT
             )
-        )
-        values = [value for value in [title, description, status] if value is not None] + [task_id]
-        cursor.execute(query, values)
-        connection.commit()
-        cursor.close()
-        print(f"Задача с ID {task_id} обновлена")
-    except Exception as e:
-        print(f"Ошибка при обновлении задачи: {e}")
+            print("✅ Успешное подключение к PostgreSQL")
+        except OperationalError as e:
+            print(f"❌ Ошибка подключения: {e}")
+            raise
 
-# Удаление задачи
-def delete_task(connection, task_id):
-    try:
-        cursor = connection.cursor()
-        cursor.execute("DELETE FROM Tasks WHERE id = %s", (task_id,))
-        connection.commit()
-        cursor.close()
-        print(f"Задача с ID {task_id} удалена")
-    except Exception as e:
-        print(f"Ошибка при удалении задачи: {e}")
+    def execute_query(self, query: str, params: tuple = None, fetch: bool = False):
+        """Универсальный метод для выполнения запросов"""
+        try:
+            with self.connection.cursor() as cursor:
+                cursor.execute(query, params or ())
+                if fetch:
+                    return cursor.fetchall()
+                self.connection.commit()
+        except Exception as e:
+            self.connection.rollback()
+            print(f"⚠️ Ошибка при выполнении запроса: {e}")
+            raise
+
+    # --- Методы для работы с задачами ---
+    def get_task(self, task_id: int) -> Optional[Dict]:
+        query = """
+        SELECT t.*, 
+               STRING_AGG(et.role || ':' || e.id || ':' || e.first_name, ', ') as assignees
+        FROM tasks t
+        LEFT JOIN employeetasks et ON t.id = et.task_id
+        LEFT JOIN employees e ON et.employee_id = e.id
+        WHERE t.id = %s
+        GROUP BY t.id
+        """
+        result = self.execute_query(query, (task_id,), fetch=True)
+        return result[0] if result else None
+
+    def create_task(self, title: str, project_id: int, **kwargs) -> int:
+        query = """
+        INSERT INTO tasks (title, project_id, sprint_id, status, task_type, story_points)
+        VALUES (%s, %s, %s, %s, %s, %s)
+        RETURNING id
+        """
+        params = (
+            title,
+            project_id,
+            kwargs.get('sprint_id'),
+            kwargs.get('status', 'backlog'),
+            kwargs.get('task_type', 'feature'),
+            kwargs.get('story_points')
+        )
+        return self.execute_query(query, params, fetch=True)[0][0]
+
+    # --- Методы для аналитики ---
+    def get_sprint_metrics(self, sprint_id: int) -> Dict:
+        query = """
+        SELECT 
+            COUNT(*) as total_tasks,
+            SUM(CASE WHEN status = 'done' THEN 1 ELSE 0 END) as completed_tasks,
+            COALESCE(SUM(story_points), 0) as total_story_points
+        FROM tasks
+        WHERE sprint_id = %s
+        """
+        return self.execute_query(query, (sprint_id,), fetch=True)[0]
+
+    def get_developer_performance(self, developer_id: int) -> Dict:
+        query = """
+        SELECT 
+            COUNT(t.id) as total_tasks,
+            AVG(EXTRACT(EPOCH FROM (t.actual_end_date - t.created_at))/3600) as avg_hours_per_task
+        FROM tasks t
+        JOIN employeetasks et ON t.id = et.task_id
+        WHERE et.employee_id = %s AND et.role = 'assignee'
+        """
+        return self.execute_query(query, (developer_id,), fetch=True)[0]
+
+# Глобальный экземпляр БД
+db = Database()
