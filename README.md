@@ -1,4 +1,4 @@
-# planer
+# PlanerSUKablyat
 # 🚀 Project Planner | Управление проектами  
 
 ![GitHub last commit](https://img.shields.io/github/last-commit/yourusername/project-planner?style=flat-square)
