@@ -1,4 +1,5 @@
 from core.database import db
+from typing import Dict
 
 def get_post_release_bugs(project_id: int, days: int = 30) -> dict:
     """Количество багов после релиза и частота откатов"""

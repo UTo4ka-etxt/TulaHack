@@ -1,4 +1,5 @@
 from core.database import db
+from typing import List, Dict
 
 def get_sprint_burndown(sprint_id: int) -> list:
     """Retrieve burndown data for a specific sprint."""
@@ -27,3 +28,17 @@ def get_planning_accuracy(sprint_id: int) -> dict:
         "actual": actual or 0,
         "accuracy": actual / planned if planned else 0
     }
+
+def get_time_to_market(project_id: int) -> float:
+    """Вычисляет Time to Market для проекта."""
+    query = """
+    SELECT 
+        MIN(t.created_at) AS project_start,
+        MAX(t.actual_end_date) AS project_end
+    FROM tasks t
+    WHERE t.project_id = %s
+    """
+    result = db.execute_query(query, (project_id,), fetch=True)[0]
+    if result["project_start"] and result["project_end"]:
+        return (result["project_end"] - result["project_start"]).total_seconds() / 3600
+    return 0.0

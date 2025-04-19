@@ -8,8 +8,8 @@ def hash_password(password):
 
 # Логика авторизации
 def login_user(connection, login, password):
+    cursor = connection.cursor()
     try:
-        cursor = connection.cursor()
         hashed_password = hash_password(password)
         cursor.execute(
             """
@@ -20,10 +20,9 @@ def login_user(connection, login, password):
             (login, hashed_password)
         )
         user = cursor.fetchone()
-        cursor.close()
 
         if user:
-            if not user[6]:  # Проверка, активен ли пользователь
+            if not user[6]:
                 return {"error": "Пользователь неактивен"}
             return {
                 "id": user[0],
@@ -39,3 +38,5 @@ def login_user(connection, login, password):
     except Exception as e:
         print(f"Ошибка при авторизации: {e}")
         return {"error": "Ошибка при авторизации"}
+    finally:
+        cursor.close()

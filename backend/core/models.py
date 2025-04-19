@@ -11,7 +11,7 @@ class Task:
         title: str,
         project_id: int,
         status: TaskStatus = TaskStatus.BACKLOG,
-        assignees: List[str] = None
+        assignees: Optional[List[str]] = None
     ):
         self.id = id
         self.title = title

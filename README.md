@@ -1,9 +1,9 @@
 # Planer
 # 🚀 Project Planner | Управление проектами  
 
-![GitHub last commit](https://img.shields.io/github/last-commit/yourusername/project-planner?style=flat-square)
-![GitHub issues](https://img.shields.io/github/issues/yourusername/project-planner?style=flat-square)
-![GitHub license](https://img.shields.io/github/license/yourusername/project-planner?style=flat-square)
+![GitHub last commit](https://img.shields.io/github/last-commit/focusniks/planer?style=flat-square)
+![GitHub issues](https://img.shields.io/github/issues/focusniks/planer?style=flat-square)
+![GitHub license](https://img.shields.io/github/license/focusniks/planer?style=flat-square)
 
 **Инструмент для управления проектами, задачами и командой**  
 Вдохновлено Bitrix24 и Trello, но проще и удобнее!

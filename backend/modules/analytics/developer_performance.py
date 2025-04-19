@@ -1,4 +1,5 @@
 from core.database import db
+from typing import Dict
 
 def get_developer_load(developer_id: int) -> dict:
     """Calculate the load of a developer (0-1)"""
@@ -34,4 +35,5 @@ def get_developer_performance(developer_id: int) -> dict:
     WHERE et.employee_id = %s AND et.role = 'assignee'
     GROUP BY et.employee_id
     """
-    return db.execute_query(query, (developer_id,), fetch=True)[0] or {}
+    result = db.execute_query(query, (developer_id,), fetch=True)
+    return result[0] if result else {"avg_hours_per_task": 0, "total_bugs": 0}
