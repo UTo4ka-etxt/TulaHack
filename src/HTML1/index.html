@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>два на два</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* Сброс стилей и базовые настройки */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Arial', sans-serif;
+        }
+        
+        body {
+            background-color: #f5f5f5;
+        }
+        
+        /* Шапка сайта */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 20px;
+            background-color: #ffffff;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            position: relative;
+        }
+        
+        /* Логотип */
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+            color: #333333;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            margin-left: 15px;
+        }
+        
+        /* Поиск */
+        .search-container {
+            display: flex;
+            align-items: center;
+            transition: all 0.3s ease;
+        }
+        
+        .search-btn {
+            cursor: pointer;
+            font-size: 20px;
+            color: #555555;
+            transition: all 0.3s ease;
+        }
+        
+        .search-btn:hover {
+            color: #333333;
+        }
+        
+        .search-input {
+            width: 0;
+            padding: 0;
+            border: none;
+            outline: none;
+            background: transparent;
+            transition: all 0.3s ease;
+            font-size: 16px;
+            margin-left: 10px;
+        }
+        
+        .search-container.active .search-input {
+            width: 200px;
+            padding: 5px 10px;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        /* Правая часть шапки */
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        /* Кнопка аккаунта */
+        .account {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            position: relative;
+        }
+        
+        .account-icon {
+            font-size: 20px;
+            color: #555555;
+            transition: all 0.3s ease;
+        }
+        
+        .account:hover .account-icon {
+            color: #333333;
+        }
+        
+        .account-menu {
+            position: absolute;
+            top: 50px;
+            right: 0;
+            width: 200px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            padding: 10px 0;
+            z-index: 100;
+            display: none;
+        }
+        
+        .account-menu.show {
+            display: block;
+        }
+        
+        .account-menu-item {
+            padding: 10px 15px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        
+        .account-menu-item:hover {
+            background-color: #f8f9fa;
+        }
+        
+        /* Блок статуса */
+        .status {
+            display: flex;
+            align-items: center;
+            background-color: #f0f0f0;
+            border-radius: 20px;
+            padding: 5px 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            user-select: none;
+        }
+        
+        .status:hover {
+            background-color: #e0e0e0;
+        }
+        
+        /* Индикатор статуса */
+        .status-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        
+        /* Стили для разных состояний */
+        .status-working .status-indicator {
+            background-color: #4CAF50;
+            animation: pulse 1.5s infinite;
+        }
+        
+        .status-resting .status-indicator {
+            background-color: #FF9800;
+            animation: none;
+        }
+        
+        /* Текст статуса */
+        .status-text {
+            font-size: 14px;
+            color: #555555;
+        }
+        
+        /* Анимация пульсации индикатора */
+        @keyframes pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.7);
+            }
+            70% {
+                box-shadow: 0 0 0 8px rgba(76, 175, 80, 0);
+            }
+            100% {
+                box-shadow: 0 0 0 0 rgba(76, 175, 80, 0);
+            }
+        }
+        
+        /* Иконка уведомлений */
+        .notifications {
+            position: relative;
+            cursor: pointer;
+            font-size: 20px;
+            color: #555555;
+            transition: all 0.3s ease;
+        }
+        
+        .notifications:hover {
+            color: #333333;
+        }
+        
+        .notification-badge {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background-color: #ff5252;
+            color: white;
+            border-radius: 50%;
+            width: 18px;
+            height: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            font-weight: bold;
+        }
+        
+        /* Панель уведомлений */
+        .notifications-panel {
+            position: absolute;
+            top: 60px;
+            right: 20px;
+            width: 350px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            padding: 15px;
+            z-index: 100;
+            display: none;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .notifications-panel.show {
+            display: block;
+        }
+        
+        .notification-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .notification-title {
+            font-weight: bold;
+            font-size: 16px;
+        }
+        
+        .notification-close {
+            cursor: pointer;
+            font-size: 18px;
+            color: #999;
+        }
+        
+        .notification-item {
+            padding: 10px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        
+        .notification-item:last-child {
+            border-bottom: none;
+        }
+        
+        .notification-time {
+            font-size: 12px;
+            color: #999;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="search-container" id="searchContainer">
+            <div class="search-btn" id="searchButton">
+                <i class="fas fa-search"></i>
+            </div>
+            <input type="text" class="search-input" id="searchInput" placeholder="Поиск...">
+        </div>
+        <div class="logo">два на два</div>
+        
+        <div class="header-right">
+            <div class="notifications" id="notificationsButton">
+                <i class="fas fa-bell"></i>
+                <div class="notification-badge">3</div>
+            </div>
+            
+            <div class="account" id="accountButton">
+                <i class="fas fa-user account-icon"></i>
+                <div class="account-menu" id="accountMenu">
+                    <div class="account-menu-item">Профиль</div>
+                    <div class="account-menu-item">Настройки</div>
+                    <div class="account-menu-item"><a href="register.html" style="text-decoration: none; color: inherit;">Регистрация</a></div>
+                    <div class="account-menu-item">Выйти</div>
+                </div>
+            </div>
+            
+            <div class="status status-working" id="statusButton">
+                <div class="status-indicator"></div>
+                <span class="status-text">Работаю</span>
+            </div>
+        </div>
+        
+        <div class="notifications-panel" id="notificationsPanel">
+            <div class="notification-header">
+                <div class="notification-title">Уведомления</div>
+                <div class="notification-close" id="closeNotifications">&times;</div>
+            </div>
+            <div class="notification-item">
+                <div>Новое сообщение от пользователя</div>
+                <div class="notification-time">5 минут назад</div>
+            </div>
+            <div class="notification-item">
+                <div>Задача выполнена успешно</div>
+                <div class="notification-time">2 часа назад</div>
+            </div>
+            <div class="notification-item">
+                <div>Система обновлена до версии 2.0</div>
+                <div class="notification-time">Вчера, 14:30</div>
+            </div>
+        </div>
+    </header>
+    
+    <!-- Основное содержимое страницы -->
+    <main>
+        <!-- Контент страницы -->
+    </main>
+
+    <script>
+        // Переключение статуса
+        const statusButton = document.getElementById('statusButton');
+        const statusText = statusButton.querySelector('.status-text');
+        const statusIndicator = statusButton.querySelector('.status-indicator');
+        
+        statusButton.addEventListener('click', function() {
+            if (this.classList.contains('status-working')) {
+                // Переключаем на режим "Отдыхаю"
+                this.classList.remove('status-working');
+                this.classList.add('status-resting');
+                statusText.textContent = 'Отдыхаю';
+            } else {
+                // Переключаем на режим "Работаю"
+                this.classList.remove('status-resting');
+                this.classList.add('status-working');
+                statusText.textContent = 'Работаю';
+            }
+        });
+
+        // Управление уведомлениями
+        const notificationsButton = document.getElementById('notificationsButton');
+        const notificationsPanel = document.getElementById('notificationsPanel');
+        const closeNotifications = document.getElementById('closeNotifications');
+        
+        notificationsButton.addEventListener('click', function(e) {
+            e.stopPropagation();
+            notificationsPanel.classList.toggle('show');
+            accountMenu.classList.remove('show');
+        });
+        
+        closeNotifications.addEventListener('click', function(e) {
+            e.stopPropagation();
+            notificationsPanel.classList.remove('show');
+        });
+        
+        // Управление меню аккаунта
+        const accountButton = document.getElementById('accountButton');
+        const accountMenu = document.getElementById('accountMenu');
+        
+        accountButton.addEventListener('click', function(e) {
+            e.stopPropagation();
+            accountMenu.classList.toggle('show');
+            notificationsPanel.classList.remove('show');
+        });
+        
+        // Управление поиском
+        const searchContainer = document.getElementById('searchContainer');
+        const searchButton = document.getElementById('searchButton');
+        const searchInput = document.getElementById('searchInput');
+        
+        searchButton.addEventListener('click', function(e) {
+            e.stopPropagation();
+            searchContainer.classList.toggle('active');
+            if (searchContainer.classList.contains('active')) {
+                searchInput.focus();
+            }
+        });
+        
+        // Закрытие поиска при клике вне его
+        document.addEventListener('click', function(e) {
+            if (!searchContainer.contains(e.target)) {
+                searchContainer.classList.remove('active');
+            }
+            notificationsPanel.classList.remove('show');
+            accountMenu.classList.remove('show');
+        });
+        
+        // Обработка ввода поискового запроса
+        searchInput.addEventListener('input', function() {
+            // Здесь можно добавить логику поиска по странице
+            console.log('Поиск:', this.value);
+        });
+        
+        // Предотвращаем закрытие при клике внутри панелей
+        notificationsPanel.addEventListener('click', function(e) {
+            e.stopPropagation();
+        });
+        
+        accountMenu.addEventListener('click', function(e) {
+            e.stopPropagation();
+        });
+    </script>
+</body>
+</html>

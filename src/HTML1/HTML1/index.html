@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>два на два</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* Сброс стилей и базовые настройки */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Arial', sans-serif;
+        }
+        
+        body {
+            background-color: #f5f5f5;
+            display: flex;
+            min-height: 100vh;
+        }
+        
+        /* Боковая панель */
+        .sidebar {
+            width: 60px;
+            height: 100vh;
+            background-color: #ffffff;
+            box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+            position: fixed;
+            z-index: 10;
+            overflow: hidden;
+        }
+        
+        .sidebar:hover {
+            width: 200px;
+        }
+        
+        .sidebar-menu {
+            padding-top: 20px;
+        }
+        
+        .sidebar-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 15px;
+            cursor: pointer;
+            color: #555555;
+            text-decoration: none;
+            transition: all 0.2s ease;
+        }
+        
+        .sidebar-item:hover {
+            background-color: #f0f0f0;
+            color: #333333;
+        }
+        
+        .sidebar-icon {
+            font-size: 20px;
+            min-width: 30px;
+        }
+        
+        .sidebar-text {
+            margin-left: 15px;
+            white-space: nowrap;
+            opacity: 0;
+            transition: opacity 0.2s ease 0.1s;
+        }
+        
+        .sidebar:hover .sidebar-text {
+            opacity: 1;
+        }
+        
+        /* Основное содержимое */
+        .main-content {
+            flex: 1;
+            margin-left: 60px;
+            transition: margin-left 0.3s ease;
+        }
+        
+        .sidebar:hover ~ .main-content {
+            margin-left: 200px;
+        }
+        
+        /* Шапка сайта */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 20px;
+            background-color: #ffffff;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            position: relative;
+        }
+        
+        /* Логотип */
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+            color: #333333;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            margin-left: 15px;
+        }
+        
+        /* Поиск */
+        .search-container {
+            display: flex;
+            align-items: center;
+            transition: all 0.3s ease;
+        }
+        
+        .search-btn {
+            cursor: pointer;
+            font-size: 20px;
+            color: #555555;
+            transition: all 0.3s ease;
+        }
+        
+        .search-btn:hover {
+            color: #333333;
+        }
+        
+        .search-input {
+            width: 0;
+            padding: 0;
+            border: none;
+            outline: none;
+            background: transparent;
+            transition: all 0.3s ease;
+            font-size: 16px;
+            margin-left: 10px;
+        }
+        
+        .search-container.active .search-input {
+            width: 200px;
+            padding: 5px 10px;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        /* Правая часть шапки */
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        /* Кнопка аккаунта */
+        .account {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            position: relative;
+        }
+        
+        .account-icon {
+            font-size: 20px;
+            color: #555555;
+            transition: all 0.3s ease;
+        }
+        
+        .account:hover .account-icon {
+            color: #333333;
+        }
+        
+        .account-menu {
+            position: absolute;
+            top: 50px;
+            right: 0;
+            width: 200px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            padding: 10px 0;
+            z-index: 100;
+            display: none;
+        }
+        
+        .account-menu.show {
+            display: block;
+        }
+        
+        .account-menu-item {
+            padding: 10px 15px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        
+        .account-menu-item:hover {
+            background-color: #f8f9fa;
+        }
+        
+        /* Блок статуса */
+        .status {
+            display: flex;
+            align-items: center;
+            background-color: #f0f0f0;
+            border-radius: 20px;
+            padding: 5px 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            user-select: none;
+        }
+        
+        .status:hover {
+            background-color: #e0e0e0;
+        }
+        
+        /* Индикатор статуса */
+        .status-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        
+        /* Стили для разных состояний */
+        .status-working .status-indicator {
+            background-color: #4CAF50;
+            animation: pulse 1.5s infinite;
+        }
+        
+        .status-resting .status-indicator {
+            background-color: #FF9800;
+            animation: none;
+        }
+        
+        /* Текст статуса */
+        .status-text {
+            font-size: 14px;
+            color: #555555;
+        }
+        
+        /* Анимация пульсации индикатора */
+        @keyframes pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.7);
+            }
+            70% {
+                box-shadow: 0 0 0 8px rgba(76, 175, 80, 0);
+            }
+            100% {
+                box-shadow: 0 0 0 0 rgba(76, 175, 80, 0);
+            }
+        }
+        
+        /* Иконка уведомлений */
+        .notifications {
+            position: relative;
+            cursor: pointer;
+            font-size: 20px;
+            color: #555555;
+            transition: all 0.3s ease;
+        }
+        
+        .notifications:hover {
+            color: #333333;
+        }
+        
+        .notification-badge {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background-color: #ff5252;
+            color: white;
+            border-radius: 50%;
+            width: 18px;
+            height: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            font-weight: bold;
+        }
+        
+        /* Панель уведомлений */
+        .notifications-panel {
+            position: absolute;
+            top: 60px;
+            right: 20px;
+            width: 350px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            padding: 15px;
+            z-index: 100;
+            display: none;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .notifications-panel.show {
+            display: block;
+        }
+        
+        .notification-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .notification-title {
+            font-weight: bold;
+            font-size: 16px;
+        }
+        
+        .notification-close {
+            cursor: pointer;
+            font-size: 18px;
+            color: #999;
+        }
+        
+        .notification-item {
+            padding: 10px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        
+        .notification-item:last-child {
+            border-bottom: none;
+        }
+        
+        .notification-time {
+            font-size: 12px;
+            color: #999;
+            margin-top: 5px;
+        }
+
+        /* Модальное окно проектов */
+        .projects-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(255, 255, 255, 0.95);
+            z-index: 1000;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
+            box-sizing: border-box;
+        }
+
+        .projects-modal.show {
+            display: flex;
+        }
+
+        .projects-header {
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+
+        .projects-title {
+            font-size: 32px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .projects-close {
+            font-size: 28px;
+            cursor: pointer;
+            color: #555;
+        }
+
+        .projects-close:hover {
+            color: #333;
+        }
+
+        .projects-list {
+            width: 100%;
+            max-width: 800px;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 20px;
+        }
+
+        /* Овальные кнопки проектов */
+        .project-item {
+            background-color: #fff;
+            border-radius: 50px; /* Овальная форма */
+            padding: 15px 25px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            min-height: 60px;
+        }
+
+        .project-item:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            background-color: #f8f9fa;
+        }
+
+        .project-name {
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .add-project {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #f0f0f0;
+            border: 2px dashed #ccc;
+            border-radius: 50px; /* Овальная форма */
+            padding: 15px 25px;
+            cursor: pointer;
+            transition: all 0.2s;
+            min-height: 60px;
+        }
+
+        .add-project:hover {
+            background-color: #e0e0e0;
+            border-color: #999;
+        }
+
+        .add-project-icon {
+            font-size: 24px;
+            color: #555;
+            margin-right: 10px;
+        }
+
+        .add-project-text {
+            font-size: 18px;
+            color: #555;
+        }
+
+        .project-form {
+            display: none;
+            width: 100%;
+            max-width: 800px;
+            margin-top: 20px;
+        }
+
+        .project-form.show {
+            display: block;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 1px solid #ddd;
+            border-radius: 50px; /* Овальная форма */
+            font-size: 16px;
+        }
+
+        .form-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .form-btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 50px; /* Овальная форма */
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.2s;
+        }
+
+        .form-btn.cancel {
+            background-color: #f0f0f0;
+            color: #555;
+        }
+
+        .form-btn.cancel:hover {
+            background-color: #e0e0e0;
+        }
+
+        .form-btn.save {
+            background-color: #4CAF50;
+            color: white;
+        }
+
+        .form-btn.save:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <!-- Боковая панель (без иконки настроек) -->
+    <div class="sidebar">
+        <div class="sidebar-menu">
+            <a href="#" class="sidebar-item" id="projectsButton">
+                <i class="fas fa-project-diagram sidebar-icon"></i>
+                <span class="sidebar-text">Проекты</span>
+            </a>
+            <a href="#" class="sidebar-item">
+                <i class="fas fa-chart-line sidebar-icon"></i>
+                <span class="sidebar-text">Статистика</span>
+            </a>
+            <a href="#" class="sidebar-item">
+                <i class="fas fa-users sidebar-icon"></i>
+                <span class="sidebar-text">Сотрудники</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- Основное содержимое -->
+    <div class="main-content">
+        <header class="header">
+            <div class="search-container" id="searchContainer">
+                <div class="search-btn" id="searchButton">
+                    <i class="fas fa-search"></i>
+                </div>
+                <input type="text" class="search-input" id="searchInput" placeholder="Поиск...">
+            </div>
+            <div class="logo">два на два</div>
+            
+            <div class="header-right">
+                <div class="notifications" id="notificationsButton">
+                    <i class="fas fa-bell"></i>
+                    <div class="notification-badge">3</div>
+                </div>
+                
+                <div class="account" id="accountButton">
+                    <i class="fas fa-user account-icon"></i>
+                    <div class="account-menu" id="accountMenu">
+                        <div class="account-menu-item">Профиль</div>
+                        <div class="account-menu-item">Настройки</div>
+                        <div class="account-menu-item"><a href="register.html" style="text-decoration: none; color: inherit;">Регистрация</a></div>
+                        <div class="account-menu-item">Выйти</div>
+                    </div>
+                </div>
+                
+                <div class="status status-working" id="statusButton">
+                    <div class="status-indicator"></div>
+                    <span class="status-text">Работаю</span>
+                </div>
+            </div>
+            
+            <div class="notifications-panel" id="notificationsPanel">
+                <div class="notification-header">
+                    <div class="notification-title">Уведомления</div>
+                    <div class="notification-close" id="closeNotifications">&times;</div>
+                </div>
+                <div class="notification-item">
+                    <div>Новое сообщение от пользователя</div>
+                    <div class="notification-time">5 минут назад</div>
+                </div>
+                <div class="notification-item">
+                    <div>Задача выполнена успешно</div>
+                    <div class="notification-time">2 часа назад</div>
+                </div>
+                <div class="notification-item">
+                    <div>Система обновлена до версии 2.0</div>
+                    <div class="notification-time">Вчера, 14:30</div>
+                </div>
+            </div>
+        </header>
+        
+        <!-- Основное содержимое страницы -->
+        <main>
+            <!-- Контент страницы -->
+        </main>
+    </div>
+
+    <!-- Модальное окно проектов -->
+    <div class="projects-modal" id="projectsModal">
+        <div class="projects-header">
+            <div class="projects-title">ПРОЕКТЫ</div>
+            <div class="projects-close" id="closeProjects">&times;</div>
+        </div>
+        
+        <div class="projects-list" id="projectsList">
+            <!-- Проекты будут добавляться сюда динамически -->
+            <div class="project-item">
+                <div class="project-name">Проект 1</div>
+            </div>
+            <div class="project-item">
+                <div class="project-name">Проект 2</div>
+            </div>
+            <div class="project-item">
+                <div class="project-name">Проект 3</div>
+            </div>
+            
+            <div class="add-project" id="addProjectButton">
+                <i class="fas fa-plus add-project-icon"></i>
+                <span class="add-project-text">Добавить проект</span>
+            </div>
+        </div>
+        
+        <div class="project-form" id="projectForm">
+            <div class="form-group">
+                <input type="text" class="form-input" id="projectNameInput" placeholder="Название проекта">
+            </div>
+            <div class="form-actions">
+                <button class="form-btn cancel" id="cancelProject">Отмена</button>
+                <button class="form-btn save" id="saveProject">Сохранить</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Массив для хранения проектов
+        let projects = [
+            { name: "Проект 1" },
+            { name: "Проект 2" },
+            { name: "Проект 3" }
+        ];
+
+        // Элементы модального окна проектов
+        const projectsButton = document.getElementById('projectsButton');
+        const projectsModal = document.getElementById('projectsModal');
+        const closeProjects = document.getElementById('closeProjects');
+        const projectsList = document.getElementById('projectsList');
+        const addProjectButton = document.getElementById('addProjectButton');
+        const projectForm = document.getElementById('projectForm');
+        const projectNameInput = document.getElementById('projectNameInput');
+        const cancelProject = document.getElementById('cancelProject');
+        const saveProject = document.getElementById('saveProject');
+
+        // Открытие модального окна проектов
+        projectsButton.addEventListener('click', function(e) {
+            e.preventDefault();
+            renderProjects();
+            projectsModal.classList.add('show');
+        });
+
+        // Закрытие модального окна проектов
+        closeProjects.addEventListener('click', function() {
+            projectsModal.classList.remove('show');
+        });
+
+        // Клик вне модального окна
+        projectsModal.addEventListener('click', function(e) {
+            if (e.target === projectsModal) {
+                projectsModal.classList.remove('show');
+            }
+        });
+
+        // Показать форму добавления проекта
+        addProjectButton.addEventListener('click', function() {
+            projectForm.classList.add('show');
+            projectNameInput.focus();
+        });
+
+        // Отмена добавления проекта
+        cancelProject.addEventListener('click', function() {
+            projectForm.classList.remove('show');
+            projectNameInput.value = '';
+        });
+
+        // Сохранение нового проекта
+        saveProject.addEventListener('click', function() {
+            const projectName = projectNameInput.value.trim();
+            if (projectName) {
+                projects.push({ name: projectName });
+                renderProjects();
+                projectNameInput.value = '';
+                projectForm.classList.remove('show');
+            }
+        });
+
+        // Рендеринг списка проектов
+        function renderProjects() {
+            // Очищаем список, кроме кнопки добавления
+            projectsList.innerHTML = '';
+            
+            // Добавляем проекты
+            projects.forEach(project => {
+                const projectItem = document.createElement('div');
+                projectItem.className = 'project-item';
+                projectItem.innerHTML = `
+                    <div class="project-name">${project.name}</div>
+                `;
+                projectsList.appendChild(projectItem);
+            });
+            
+            // Добавляем кнопку добавления проекта в конец
+            const addButton = document.createElement('div');
+            addButton.className = 'add-project';
+            addButton.id = 'addProjectButton';
+            addButton.innerHTML = `
+                <i class="fas fa-plus add-project-icon"></i>
+                <span class="add-project-text">Добавить проект</span>
+            `;
+            projectsList.appendChild(addButton);
+            
+            // Назначаем обработчик событий на новую кнопку
+            addButton.addEventListener('click', function() {
+                projectForm.classList.add('show');
+                projectNameInput.focus();
+            });
+        }
+
+        // Переключение статуса
+        const statusButton = document.getElementById('statusButton');
+        const statusText = statusButton.querySelector('.status-text');
+        const statusIndicator = statusButton.querySelector('.status-indicator');
+        
+        statusButton.addEventListener('click', function() {
+            if (this.classList.contains('status-working')) {
+                // Переключаем на режим "Отдыхаю"
+                this.classList.remove('status-working');
+                this.classList.add('status-resting');
+                statusText.textContent = 'Отдыхаю';
+            } else {
+                // Переключаем на режим "Работаю"
+                this.classList.remove('status-resting');
+                this.classList.add('status-working');
+                statusText.textContent = 'Работаю';
+            }
+        });
+
+        // Управление уведомлениями
+        const notificationsButton = document.getElementById('notificationsButton');
+        const notificationsPanel = document.getElementById('notificationsPanel');
+        const closeNotifications = document.getElementById('closeNotifications');
+        
+        notificationsButton.addEventListener('click', function(e) {
+            e.stopPropagation();
+            notificationsPanel.classList.toggle('show');
+            accountMenu.classList.remove('show');
+        });
+        
+        closeNotifications.addEventListener('click', function(e) {
+            e.stopPropagation();
+            notificationsPanel.classList.remove('show');
+        });
+        
+        // Управление меню аккаунта
+        const accountButton = document.getElementById('accountButton');
+        const accountMenu = document.getElementById('accountMenu');
+        
+        accountButton.addEventListener('click', function(e) {
+            e.stopPropagation();
+            accountMenu.classList.toggle('show');
+            notificationsPanel.classList.remove('show');
+        });
+        
+        // Управление поиском
+        const searchContainer = document.getElementById('searchContainer');
+        const searchButton = document.getElementById('searchButton');
+        const searchInput = document.getElementById('searchInput');
+        
+        searchButton.addEventListener('click', function(e) {
+            e.stopPropagation();
+            searchContainer.classList.toggle('active');
+            if (searchContainer.classList.contains('active')) {
+                searchInput.focus();
+            }
+        });
+        
+        // Закрытие поиска при клике вне его
+        document.addEventListener('click', function(e) {
+            if (!searchContainer.contains(e.target)) {
+                searchContainer.classList.remove('active');
+            }
+            notificationsPanel.classList.remove('show');
+            accountMenu.classList.remove('show');
+        });
+        
+        // Обработка ввода поискового запроса
+        searchInput.addEventListener('input', function() {
+            // Здесь можно добавить логику поиска по странице
+            console.log('Поиск:', this.value);
+        });
+        
+        // Предотвращаем закрытие при клике внутри панелей
+        notificationsPanel.addEventListener('click', function(e) {
+            e.stopPropagation();
+        });
+        
+        accountMenu.addEventListener('click', function(e) {
+            e.stopPropagation();
+        });
+    </script>
+</body>
+</html>
