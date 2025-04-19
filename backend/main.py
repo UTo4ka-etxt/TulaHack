@@ -16,10 +16,10 @@ def root():
     return {"message": "Добро пожаловать в API дашборда!"}
 
 def main():
-    # Initialize the database connection
+    # Инициализация подключения к базе данных
     db.connect()
 
-    # Dashboard Overview
+    # Обзор дашборда
     result = db.execute_query("SELECT COUNT(*) FROM tasks", fetch=True)
     if result:
         total_tasks = result[0][0]
@@ -36,35 +36,35 @@ def main():
     else:
         active_sprints = 0
 
-    print("Dashboard Overview:")
-    print(f"Total Tasks: {total_tasks}")
-    print(f"Completed Tasks: {completed_tasks}")
-    print(f"Active Sprints: {active_sprints}")
+    print("Обзор дашборда:")
+    print(f"Всего задач: {total_tasks}")
+    print(f"Завершенных задач: {completed_tasks}")
+    print(f"Активных спринтов: {active_sprints}")
 
-    # Sprint Metrics
-    sprint_id = 1  # Example sprint ID
+    # Метрики спринта
+    sprint_id = 1  # Пример ID спринта
     burndown_data = sprint_metrics.get_sprint_burndown(sprint_id)
     planning_accuracy = sprint_metrics.get_planning_accuracy(sprint_id)
 
-    print("\nSprint Metrics:")
-    print("Burndown Data:", burndown_data)
-    print("Planning Accuracy:", planning_accuracy)
+    print("\nМетрики спринта:")
+    print("Данные Burndown:", burndown_data)
+    print("Точность планирования:", planning_accuracy)
 
-    # Developer Performance
-    developer_id = 1  # Example developer ID
+    # Производительность разработчика
+    developer_id = 1  # Пример ID разработчика
     developer_load = developer_performance.get_developer_load(developer_id)
     developer_performance_data = developer_performance.get_developer_performance(developer_id)
 
-    print("\nDeveloper Performance:")
-    print("Load:", developer_load)
-    print("Performance Data:", developer_performance_data)
+    print("\nПроизводительность разработчика:")
+    print("Загрузка:", developer_load)
+    print("Данные производительности:", developer_performance_data)
 
-    # Bug Analysis
-    project_id = 1  # Example project ID
+    # Анализ багов
+    project_id = 1  # Пример ID проекта
     bug_stats = bug_analysis.get_post_release_bugs(project_id)
     
-    print("\nBug Analysis:")
-    print("Bug Stats:", bug_stats)
+    print("\nАнализ багов:")
+    print("Статистика багов:", bug_stats)
 
 if __name__ == "__main__":
     main()

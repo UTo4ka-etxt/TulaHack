@@ -1,4 +1,3 @@
-# filepath: d:\GitHub\planer\backend\core\database.py
 import psycopg2
 from psycopg2 import OperationalError
 from typing import List, Dict, Optional
