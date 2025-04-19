@@ -31,6 +31,9 @@ class Database:
         """Универсальный метод для выполнения запросов"""
         if not self.connection:
             raise OperationalError("Нет активного соединения с базой данных")
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
         try:
             with self.connection.cursor() as cursor:
@@ -43,7 +46,10 @@ class Database:
             raise
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 =======
+=======
+>>>>>>> Stashed changes
     def get_task(self, task_id: int) -> Optional[Dict]:
         query = """
         SELECT t.*, 
@@ -73,6 +79,9 @@ class Database:
         )
         return self.execute_query(query, params, fetch=True)[0][0]
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
     def get_sprint_metrics(self, sprint_id: int) -> Dict:
         query = """
@@ -97,6 +106,7 @@ class Database:
         return self.execute_query(query, (developer_id,), fetch=True)[0]
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     def create_task(self, title: str, project_id: int, **kwargs) -> int:
         query = """
         INSERT INTO tasks (title, project_id, sprint_id, status, task_type, story_points)
@@ -114,6 +124,8 @@ class Database:
         return self.execute_query(query, params, fetch=True)[0][0]
 
 # Global database instance
+=======
+>>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes
 db = Database()

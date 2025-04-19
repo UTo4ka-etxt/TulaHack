@@ -1,8 +1,11 @@
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 # filepath: d:\GitHub\planer\backend\modules\data_processing\integration.py
 
 # This file is intentionally left blank.
 =======
+=======
+>>>>>>> Stashed changes
 import csv
 import requests
 from datetime import datetime
@@ -162,5 +165,9 @@ def import_github_issues(repo: str, token: str):
             except Exception as e:
                 print(f"Ошибка при импорте задачи: {issue['title']}. Ошибка: {e}")
     else:
+<<<<<<< Updated upstream
+        print(f"Ошибка при запросе к GitHub API: {response.status_code}")
+>>>>>>> Stashed changes
+=======
         print(f"Ошибка при запросе к GitHub API: {response.status_code}")
 >>>>>>> Stashed changes
