@@ -3,7 +3,6 @@ from datetime import datetime
 from typing import Optional, List
 from enum import Enum
 
-# Enums for validation
 class TaskStatus(str, Enum):
     backlog = "backlog"
     todo = "todo"
@@ -20,7 +19,6 @@ class TaskType(str, Enum):
     technical_debt = "technical_debt"
     research = "research"
 
-# Base schemas
 class EmployeeBase(BaseModel):
     last_name: str
     first_name: str
@@ -34,13 +32,11 @@ class TaskBase(BaseModel):
     status: TaskStatus = TaskStatus.backlog
     task_type: TaskType = TaskType.feature
 
-# Schemas for creation
 class TaskCreate(TaskBase):
     description: Optional[str] = None
     sprint_id: Optional[int] = None
     story_points: Optional[int] = None
 
-# Schemas for responses
 class Task(TaskBase):
     id: int
     created_at: datetime
