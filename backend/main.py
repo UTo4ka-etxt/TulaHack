@@ -20,9 +20,21 @@ def main():
     db.connect()
 
     # Dashboard Overview
-    total_tasks = db.execute_query("SELECT COUNT(*) FROM tasks")[0][0]
-    completed_tasks = db.execute_query("SELECT COUNT(*) FROM tasks WHERE status = 'done'")[0][0]
-    active_sprints = db.execute_query("SELECT COUNT(*) FROM sprints WHERE status = 'active'")[0][0]
+    result = db.execute_query("SELECT COUNT(*) FROM tasks", fetch=True)
+    if result:
+        total_tasks = result[0][0]
+    else:
+        total_tasks = 0
+    result = db.execute_query("SELECT COUNT(*) FROM tasks WHERE status = 'done'", fetch=True)
+    if result:
+        completed_tasks = result[0][0]
+    else:
+        completed_tasks = 0
+    result = db.execute_query("SELECT COUNT(*) FROM sprints WHERE status = 'active'", fetch=True)
+    if result:
+        active_sprints = result[0][0]
+    else:
+        active_sprints = 0
 
     print("Dashboard Overview:")
     print(f"Total Tasks: {total_tasks}")

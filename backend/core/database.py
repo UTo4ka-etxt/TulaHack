@@ -25,15 +25,14 @@ class Database:
             raise
 
     def execute_query(self, query: str, params: tuple = None, fetch: bool = False):
-        """Universal method for executing queries"""
-        """Универсальный метод для выполнения запросов"""
         if not self.connection:
             raise OperationalError("Нет активного соединения с базой данных")
         try:
             with self.connection.cursor() as cursor:
                 cursor.execute(query, params or ())
-                cursor.execute(query)
-                return cursor.fetchall()
+                if fetch:
+                    return cursor.fetchall()
+                self.connection.commit()
         except Exception as e:
             self.connection.rollback()
             print(f"⚠️ Query execution error: {e}")

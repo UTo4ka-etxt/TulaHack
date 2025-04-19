@@ -5,21 +5,19 @@ def get_developer_load(developer_id: int) -> dict:
     """Calculate the load of a developer (0-1)"""
     query = """
     SELECT 
-        COUNT(t.id) AS current_tasks,
-        e.workload_capacity
+        COUNT(t.id) AS current_tasks
     FROM employeetasks et
     JOIN tasks t ON et.task_id = t.id
-    JOIN employees e ON et.employee_id = e.id
     WHERE et.employee_id = %s AND t.status NOT IN ('done', 'cancelled')
-    GROUP BY e.id
     """
     data = db.execute_query(query, (developer_id,), fetch=True)
     if not data:
         return {"load": 0.0}
     
-    current_tasks, capacity = data[0]
+    current_tasks = data[0][0]
+    capacity = 40  # Задаем фиксированное значение рабочей нагрузки
     return {
-        "load": min(current_tasks / capacity, 1.0) if capacity > 0 else 0.0,
+        "load": min(current_tasks / capacity, 1.0),
         "capacity": capacity
     }
 
