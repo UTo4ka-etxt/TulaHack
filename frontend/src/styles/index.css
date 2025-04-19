@@ -1,0 +1,813 @@
+/* Сброс стилей и базовые настройки */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Arial', sans-serif;
+}
+
+html, body, #root {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    font-family: 'Segoe UI', Arial, sans-serif;
+    background: #f7f8fa;
+}
+
+body {
+    background-color: #f5f5f5;
+    display: flex;
+    min-height: 100vh;
+}
+
+.layout {
+    display: flex;
+    min-height: 100vh;
+    width: 100vw;
+}
+
+/* Боковая панель */
+.sidebar {
+    background: #232946;
+    color: #fff;
+    width: 200px;
+    min-width: 200px;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    z-index: 2;
+    box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+    overflow: hidden;
+}
+
+.sidebar:hover {
+    width: 200px;
+}
+
+.sidebar-menu {
+    margin-top: 40px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.sidebar-item {
+    display: flex;
+    align-items: center;
+    padding: 12px 24px;
+    color: #fff;
+    text-decoration: none;
+    font-size: 1.1em;
+    transition: background 0.2s;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.sidebar-item:hover {
+    background: #393e6e;
+}
+
+.sidebar-icon {
+    margin-right: 12px;
+    font-size: 1.2em;
+}
+
+.sidebar-text {
+    margin-left: 15px;
+    white-space: nowrap;
+    opacity: 0;
+    transition: opacity 0.2s ease 0.1s;
+}
+
+.sidebar:hover .sidebar-text {
+    opacity: 1;
+}
+
+/* Основное содержимое */
+.main-content {
+    flex: 1;
+    background: #f7f8fa;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    margin-left: 60px;
+    transition: margin-left 0.3s ease;
+}
+
+.sidebar:hover ~ .main-content {
+    margin-left: 200px;
+}
+
+/* Шапка сайта */
+.header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #fff;
+    padding: 16px 32px;
+    box-shadow: 0 2px 8px rgba(35, 41, 70, 0.06);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+/* Логотип */
+.logo {
+    font-size: 1.5em;
+    font-weight: bold;
+    color: #232946;
+    letter-spacing: 2px;
+    margin-left: 15px;
+}
+
+/* Поиск */
+.search-container {
+    display: flex;
+    align-items: center;
+    background: #f1f2f6;
+    border-radius: 6px;
+    padding: 4px 10px;
+    transition: box-shadow 0.2s;
+    box-shadow: none;
+}
+
+.search-container.active,
+.search-container:focus-within {
+    box-shadow: 0 0 0 2px #23294633;
+}
+
+.search-btn {
+    color: #232946;
+    cursor: pointer;
+    margin-right: 6px;
+}
+
+.search-btn:hover {
+    color: #333333;
+}
+
+.search-input {
+    border: none;
+    background: transparent;
+    outline: none;
+    font-size: 1em;
+    width: 120px;
+}
+
+.search-container.active .search-input {
+    width: 200px;
+    padding: 5px 10px;
+    border-bottom: 1px solid #ddd;
+}
+
+/* Правая часть шапки */
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+}
+
+/* Кнопка аккаунта */
+.account {
+    position: relative;
+    cursor: pointer;
+}
+
+.account-icon {
+    font-size: 1.3em;
+}
+
+.account:hover .account-icon {
+    color: #333333;
+}
+
+.account-menu {
+    display: none;
+    position: absolute;
+    right: 0;
+    top: 32px;
+    background: #fff;
+    color: #232946;
+    min-width: 180px;
+    box-shadow: 0 2px 8px rgba(35, 41, 70, 0.12);
+    border-radius: 8px;
+    z-index: 100;
+    padding: 8px 0;
+}
+
+.account-menu.show {
+    display: block;
+}
+
+.account-menu-item {
+    padding: 10px 20px;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.account-menu-item:hover {
+    background: #f1f2f6;
+}
+
+/* Блок статуса */
+.status {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    padding: 6px 14px;
+    border-radius: 20px;
+    background: #f1f2f6;
+    font-size: 0.98em;
+    transition: background 0.2s;
+    user-select: none;
+}
+
+.status:hover {
+    background-color: #e0e0e0;
+}
+
+/* Индикатор статуса */
+.status-indicator {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    margin-right: 8px;
+}
+
+/* Стили для разных состояний */
+.status-working .status-indicator {
+    background: #43d190;
+    animation: pulse 1.5s infinite;
+}
+
+.status-resting .status-indicator {
+    background: #eebbc3;
+    animation: none;
+}
+
+/* Текст статуса */
+.status-text {
+    font-size: 14px;
+    color: #555555;
+}
+
+/* Анимация пульсации индикатора */
+@keyframes pulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.7);
+    }
+    70% {
+        box-shadow: 0 0 0 8px rgba(76, 175, 80, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(76, 175, 80, 0);
+    }
+}
+
+/* Иконка уведомлений */
+.notifications {
+    position: relative;
+    cursor: pointer;
+    font-size: 20px;
+    color: #555555;
+    transition: all 0.3s ease;
+}
+
+.notifications:hover {
+    color: #333333;
+}
+
+.notification-badge {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    background: #eebbc3;
+    color: #232946;
+    border-radius: 50%;
+    font-size: 0.8em;
+    padding: 2px 6px;
+    font-weight: bold;
+}
+
+/* Панель уведомлений */
+.notifications-panel {
+    display: none;
+    position: absolute;
+    right: 0;
+    top: 32px;
+    background: #fff;
+    color: #232946;
+    min-width: 260px;
+    box-shadow: 0 2px 8px rgba(35, 41, 70, 0.12);
+    border-radius: 8px;
+    z-index: 100;
+    padding: 12px 0;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.notifications-panel.show {
+    display: block;
+}
+
+.notification-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 16px 8px 16px;
+    border-bottom: 1px solid #f1f2f6;
+    font-weight: bold;
+}
+
+.notification-title {
+    font-weight: bold;
+    font-size: 16px;
+}
+
+.notification-close {
+    cursor: pointer;
+    font-size: 1.2em;
+}
+
+.notification-item {
+    padding: 10px 16px;
+    border-bottom: 1px solid #f1f2f6;
+    font-size: 0.98em;
+}
+
+.notification-item:last-child {
+    border-bottom: none;
+}
+
+.notification-time {
+    color: #888;
+    font-size: 0.85em;
+    margin-top: 2px;
+}
+
+/* Модальное окно проектов */
+.projects-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(35, 41, 70, 0.18);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+}
+
+.projects-modal.show {
+    display: flex;
+}
+
+.projects-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #232946;
+    color: #fff;
+    padding: 18px 28px;
+    border-radius: 10px 10px 0 0;
+    font-size: 1.2em;
+}
+
+.projects-title {
+    font-size: 32px;
+    font-weight: bold;
+    color: #333;
+}
+
+.projects-close {
+    font-size: 28px;
+    cursor: pointer;
+    color: #555;
+}
+
+.projects-close:hover {
+    color: #333;
+}
+
+.projects-modal > div {
+    background: #fff;
+    border-radius: 10px;
+    min-width: 340px;
+    min-height: 220px;
+    box-shadow: 0 4px 24px rgba(35, 41, 70, 0.18);
+    overflow: hidden;
+}
+
+.projects-list {
+    padding: 18px 28px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: 100%;
+    max-width: 800px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 20px;
+}
+
+/* Овальные кнопки проектов */
+.project-item {
+    padding: 10px 0;
+    cursor: pointer;
+    border-bottom: 1px solid #f1f2f6;
+    font-size: 1.05em;
+    background-color: #fff;
+    border-radius: 50px; /* Овальная форма */
+    padding: 15px 25px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    min-height: 60px;
+}
+
+.project-item:last-child {
+    border-bottom: none;
+}
+
+.project-item:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    background-color: #f8f9fa;
+}
+
+.project-name {
+    font-size: 18px;
+    font-weight: bold;
+    color: #333;
+}
+
+.add-project {
+    display: flex;
+    align-items: center;
+    color: #232946;
+    cursor: pointer;
+    margin-top: 10px;
+    font-weight: bold;
+    justify-content: center;
+    background-color: #f0f0f0;
+    border: 2px dashed #ccc;
+    border-radius: 50px; /* Овальная форма */
+    padding: 15px 25px;
+    cursor: pointer;
+    transition: all 0.2s;
+    min-height: 60px;
+}
+
+.add-project:hover {
+    background-color: #e0e0e0;
+    border-color: #999;
+}
+
+.add-project-icon {
+    margin-right: 8px;
+    font-size: 24px;
+    color: #555;
+    margin-right: 10px;
+}
+
+.add-project-text {
+    font-size: 18px;
+    color: #555;
+}
+
+.project-form {
+    display: none;
+    padding: 18px 28px;
+    border-top: 1px solid #f1f2f6;
+    width: 100%;
+    max-width: 800px;
+    margin-top: 20px;
+}
+
+.project-form.show {
+    display: block;
+}
+
+.form-group {
+    margin-bottom: 14px;
+    margin-bottom: 15px;
+}
+
+.form-input {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    font-size: 1em;
+    padding: 12px 15px;
+    border: 1px solid #ddd;
+    border-radius: 50px; /* Овальная форма */
+    font-size: 16px;
+}
+
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.form-btn {
+    padding: 7px 18px;
+    border: none;
+    border-radius: 6px;
+    font-size: 1em;
+    cursor: pointer;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 50px; /* Овальная форма */
+    cursor: pointer;
+    font-size: 16px;
+    transition: background-color 0.2s;
+}
+
+.form-btn.cancel {
+    background: #e0e0e0;
+    color: #232946;
+    background-color: #f0f0f0;
+    color: #555;
+}
+
+.form-btn.cancel:hover {
+    background-color: #e0e0e0;
+}
+
+.form-btn.save {
+    background: #232946;
+    color: #fff;
+    background-color: #4CAF50;
+    color: white;
+}
+
+.form-btn.save:hover {
+    background-color: #45a049;
+}
+
+/* Стили для окна задач проекта */
+.tasks-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(35, 41, 70, 0.18);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+}
+
+.tasks-modal.show {
+    display: flex;
+}
+
+.tasks-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #232946;
+    color: #fff;
+    padding: 18px 28px;
+    border-radius: 10px 10px 0 0;
+    font-size: 1.2em;
+}
+
+.tasks-title {
+    font-size: 32px;
+    font-weight: bold;
+    color: #333;
+}
+
+.tasks-close {
+    font-size: 28px;
+    cursor: pointer;
+    color: #555;
+}
+
+.tasks-close:hover {
+    color: #333;
+}
+
+.tasks-modal > div {
+    background: #fff;
+    border-radius: 10px;
+    min-width: 340px;
+    min-height: 220px;
+    box-shadow: 0 4px 24px rgba(35, 41, 70, 0.18);
+    overflow: hidden;
+}
+
+/* Контейнер для столбцов задач */
+.tasks-container {
+    display: flex;
+    gap: 24px;
+    padding: 24px;
+    width: 100%;
+    max-width: 1200px;
+    overflow-x: auto;
+    padding-bottom: 20px;
+}
+
+/* Стили для столбца задач */
+.task-column {
+    background: #f1f2f6;
+    border-radius: 8px;
+    min-width: 220px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    min-width: 280px;
+    background-color: #fff;
+    border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    padding: 15px;
+    transition: all 0.3s ease;
+}
+
+.task-column-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-weight: bold;
+    margin-bottom: 10px;
+    margin-bottom: 15px;
+    cursor: pointer;
+}
+
+.task-column-title {
+    font-size: 18px;
+    font-weight: bold;
+    color: #333;
+}
+
+.task-column-toggle {
+    font-size: 16px;
+    color: #555;
+    transition: transform 0.3s;
+}
+
+.task-column.collapsed .task-column-toggle {
+    transform: rotate(-90deg);
+}
+
+.task-column.collapsed .task-list {
+    display: none;
+}
+
+/* Стили для списка задач */
+.task-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.task-item {
+    background: #fff;
+    border-radius: 6px;
+    padding: 10px 12px;
+    box-shadow: 0 1px 4px rgba(35, 41, 70, 0.08);
+    margin-bottom: 8px;
+    background-color: #f9f9f9;
+    border-radius: 8px;
+    padding: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.task-item:hover {
+    background-color: #f0f0f0;
+    transform: translateY(-2px);
+}
+
+.task-name {
+    font-size: 16px;
+    margin-bottom: 5px;
+}
+
+.task-description {
+    font-size: 14px;
+    color: #666;
+    margin-bottom: 5px;
+}
+
+.task-footer {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.9em;
+    color: #888;
+    margin-top: 6px;
+    font-size: 12px;
+    color: #999;
+}
+
+/* Кнопка добавления столбца */
+.add-column {
+    display: flex;
+    align-items: center;
+    color: #232946;
+    cursor: pointer;
+    font-weight: bold;
+    margin-left: 16px;
+    min-width: 280px;
+    background-color: #f0f0f0;
+    border: 2px dashed #ccc;
+    border-radius: 10px;
+    padding: 15px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.add-column:hover {
+    background-color: #e0e0e0;
+    border-color: #999;
+}
+
+.add-column-icon {
+    margin-right: 8px;
+    font-size: 20px;
+    color: #555;
+    margin-right: 10px;
+}
+
+.add-column-text {
+    font-size: 16px;
+    color: #555;
+}
+
+/* Форма добавления столбца */
+.column-form {
+    display: none;
+    min-width: 280px;
+    background-color: #fff;
+    border-radius: 10px;
+    padding: 15px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.column-form.show {
+    display: block;
+}
+
+/* Форма добавления задачи */
+.task-form {
+    display: none;
+    background-color: #fff;
+    border-radius: 8px;
+    padding: 15px;
+    margin-top: 10px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.task-form.show {
+    display: block;
+}
+
+.form-input-sm {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+    margin-bottom: 10px;
+}
+
+.form-textarea {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+    min-height: 80px;
+    resize: vertical;
+    margin-bottom: 10px;
+}
+
+.form-actions-sm {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.form-btn-sm {
+    padding: 6px 12px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.2s;
+}
