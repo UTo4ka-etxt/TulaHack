@@ -1,6 +1,6 @@
 from core.database import db
 
-def get_post_release_bugs(project_id: int, days: int = 30) -> Dict:
+def get_post_release_bugs(project_id: int, days: int = 30) -> dict:
     """Количество багов после релиза и частота откатов"""
     query = """
     SELECT 
@@ -14,7 +14,7 @@ def get_post_release_bugs(project_id: int, days: int = 30) -> Dict:
     """
     return db.execute_query(query, (project_id, days), fetch=True)[0]
 
-def get_bug_resolution_stats(project_id: int) -> Dict:
+def get_bug_resolution_stats(project_id: int) -> dict:
     """Среднее время исправления багов по severity"""
     query = """
     SELECT 
@@ -24,4 +24,4 @@ def get_bug_resolution_stats(project_id: int) -> Dict:
     WHERE project_id = %s AND resolved_at IS NOT NULL
     GROUP BY severity
     """
-    return dict(db.execute_query(query, (project_id,), fetch=True)
+    return dict(db.execute_query(query, (project_id,), fetch=True))

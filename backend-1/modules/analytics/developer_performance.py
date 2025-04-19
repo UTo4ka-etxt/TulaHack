@@ -1,7 +1,7 @@
 from core.database import db
 
-def get_developer_load(developer_id: int) -> Dict:
-    """Коэффициент загруженности разработчика (0-1)"""
+def get_developer_load(developer_id: int) -> dict:
+    """Calculate the load of a developer (0-1)"""
     query = """
     SELECT 
         COUNT(t.id) AS current_tasks,
@@ -22,8 +22,8 @@ def get_developer_load(developer_id: int) -> Dict:
         "capacity": capacity
     }
 
-def get_developer_performance(developer_id: int) -> Dict:
-    """Среднее время выполнения задач и количество багов"""
+def get_developer_performance(developer_id: int) -> dict:
+    """Average time to complete tasks and number of bugs"""
     query = """
     SELECT 
         AVG(EXTRACT(EPOCH FROM (t.actual_end_date - t.created_at)))/3600 AS avg_hours_per_task,

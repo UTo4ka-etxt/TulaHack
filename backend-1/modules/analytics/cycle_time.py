@@ -1,9 +1,8 @@
-from datetime import datetime
 from typing import Dict, List
 from core.database import db
 
-def get_task_cycle_time(task_id: int) -> Dict[str, float]:
-    """Возвращает время выполнения задачи по этапам (в часах)"""
+def get_cycle_time(task_id: int) -> Dict[str, float]:
+    """Returns the cycle time for a specific task by stages (in hours)"""
     query = """
     SELECT 
         stage,
@@ -15,7 +14,7 @@ def get_task_cycle_time(task_id: int) -> Dict[str, float]:
     return {stage: duration for stage, duration in stages}
 
 def get_avg_cycle_time(project_id: int) -> Dict[str, float]:
-    """Среднее время выполнения задач по этапам для проекта"""
+    """Calculates the average cycle time for tasks by stages for a project"""
     query = """
     SELECT 
         tw.stage,

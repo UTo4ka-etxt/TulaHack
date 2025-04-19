@@ -1,3 +1,4 @@
+# filepath: d:\GitHub\planer\backend\modules\auth\register.py
 import hashlib
 from core.database import connect_to_database
 
