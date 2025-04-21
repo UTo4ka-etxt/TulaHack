@@ -29,9 +29,9 @@ const App: React.FC = () => {
       name: "Проект 1",
       date: "2025-06-15",
       tasks: [
-        { id: 1, title: "Задача 1", status: "new" },
-        { id: 2, title: "Задача 2", status: "in_progress" },
-        { id: 3, title: "Задача 3", status: "done" }
+        { id: 1, title: "Задача 1", status: "new", description: "" },
+        { id: 2, title: "Задача 2", status: "in_progress", description: "" },
+        { id: 3, title: "Задача 3", status: "done", description: "" }
       ],
       team: ["Петров Петр", "Иванов Иван"],
       comments: ["Комментарий 1", "Комментарий 2"]
@@ -40,7 +40,7 @@ const App: React.FC = () => {
       name: "Проект 2",
       date: "2025-06-20",
       tasks: [
-        { id: 4, title: "Задача 4", status: "new" }
+        { id: 4, title: "Задача 4", status: "new", description: "" }
       ],
       team: ["Романов Роман"],
       comments: []
@@ -53,7 +53,7 @@ const App: React.FC = () => {
       comments: []
     }
   ]);
-  const [activeProject, setActiveProject] = useState(0);
+  const [activeProject, setActiveProject] = useState<number | null>(null);
   const [projectsModal, setProjectsModal] = useState(false);
   const [selectedProjectIdx, setSelectedProjectIdx] = useState<number | null>(null);
   const [projectForm, setProjectForm] = useState(false);
@@ -67,7 +67,17 @@ const App: React.FC = () => {
   const [employeeRole, setEmployeeRole] = useState("");
   const [editEmployeeIdx, setEditEmployeeIdx] = useState<number | null>(null);
   const [status, setStatus] = useState(true);
-  const [taskEdit, setTaskEdit] = useState<null | {mode: "add"|"edit", status: "new"|"in_progress"|"done", value: string, id: number|null}>(null);
+  const [taskEdit, setTaskEdit] = useState<null | {mode: "add"|"edit", status: "new"|"in_progress"|"done", value: string, id: number|null, description?: string}>(null);
+  const [hoveredProjectIdx, setHoveredProjectIdx] = useState<number | null>(null);
+  const [fadingTasks, setFadingTasks] = useState<{[taskId: number]: boolean}>({});
+
+  // Для редактирования команды
+  const [editTeam, setEditTeam] = useState(false);
+
+  // Для редактирования комментариев
+  const [commentEditIdx, setCommentEditIdx] = useState<number | null>(null);
+  const [commentEditValue, setCommentEditValue] = useState("");
+  const [newCommentValue, setNewCommentValue] = useState("");
 
   // Chart.js инициализация
   useEffect(() => {
@@ -141,6 +151,15 @@ const App: React.FC = () => {
     }
   };
 
+  // Удаление проекта
+  const handleDeleteProject = (idx: number) => {
+    setProjects(projects.filter((_, i) => i !== idx));
+    // Если удаляемый проект был выбран, закрыть подробный просмотр
+    if (selectedProjectIdx === idx) setSelectedProjectIdx(null);
+    // Если удаляемый проект был активен на главной, сбросить активный
+    if (activeProject === idx) setActiveProject(null);
+  };
+
   // Добавление/редактирование сотрудника
   const handleSaveEmployee = () => {
     if (employeeName.trim() && employeeRole.trim()) {
@@ -160,7 +179,15 @@ const App: React.FC = () => {
 
   // Удаление сотрудника
   const handleDeleteEmployee = (idx: number) => {
+    const nameToRemove = employees[idx].name;
     setEmployees(employees.filter((_, i) => i !== idx));
+    // Удаляем сотрудника из всех команд проектов
+    setProjects(projects =>
+      projects.map(project => ({
+        ...project,
+        team: project.team.filter(member => member !== nameToRemove)
+      }))
+    );
   };
 
   // Открытие формы редактирования сотрудника
@@ -169,6 +196,30 @@ const App: React.FC = () => {
     setEmployeeRole(employees[idx].role);
     setEditEmployeeIdx(idx);
     setEmployeeForm(true);
+  };
+
+  // Получить исполнителя задачи (по EmployeeTasks или team, если нет связки)
+  const getTaskAssignee = (projectIdx: number, taskId: number) => {
+    // В демо-данных нет связки, просто берем первого из team
+    const team = projects[projectIdx].team;
+    return team && team.length > 0 ? team[0] : "—";
+  };
+
+  // Отметить задачу выполненной с анимацией
+  const handleCompleteTask = (projectIdx: number, taskId: number) => {
+    setFadingTasks(prev => ({ ...prev, [taskId]: true }));
+    setTimeout(() => {
+      const arr = [...projects];
+      arr[projectIdx].tasks = arr[projectIdx].tasks.map(t =>
+        t.id === taskId ? { ...t, status: "done" } : t
+      );
+      setProjects(arr);
+      setFadingTasks(prev => {
+        const copy = { ...prev };
+        delete copy[taskId];
+        return copy;
+      });
+    }, 400); // 400мс для плавности
   };
 
   return (
@@ -209,86 +260,98 @@ const App: React.FC = () => {
           <h1 className="main-title">ЗАДАЧИ</h1>
 
           {/* Проекты */}
-          <div className="projects-row">
+          <div className="projects-row" style={{display: "flex", flexDirection: "row", gap: 24, marginBottom: 32}}>
             {projects.map((project, idx) => (
               <div
                 key={idx}
-                className={`project-pill${idx === activeProject ? " active" : ""}`}
-                onClick={() => setActiveProject(idx)}
+                className={`project-pill${activeProject === idx ? " active" : ""}`}
+                onClick={() => setActiveProject(activeProject === idx ? null : idx)}
                 style={{
                   minWidth: 180,
                   minHeight: 48,
                   background: idx === 0 ? "#bfe5c6" : idx === 1 ? "#ffe0a3" : idx === 2 ? "#ffffb5" : "#f3f3f3",
-                  color: idx === activeProject ? "#fff" : "#222",
-                  boxShadow: idx === activeProject ? "0 4px 18px rgba(0,0,0,0.12)" : "0 2px 8px rgba(0,0,0,0.08)",
-                  fontWeight: idx === activeProject ? 600 : 500,
-                  border: "none"
+                  color: activeProject === idx ? "#fff" : "#222",
+                  boxShadow: activeProject === idx ? "0 4px 18px rgba(0,0,0,0.12)" : "0 2px 8px rgba(0,0,0,0.08)",
+                  fontWeight: activeProject === idx ? 600 : 500,
+                  border: "none",
+                  position: "relative",
+                  cursor: "pointer"
                 }}
               >
                 {project.name}
+                {/* Список активных задач под проектом */}
+                {activeProject === idx && (
+                  <div
+                    style={{
+                      position: "absolute",
+                      top: "110%",
+                      left: "50%",
+                      transform: "translateX(-50%)",
+                      minWidth: 340,
+                      background: "#fff",
+                      borderRadius: 16,
+                      boxShadow: "0 8px 32px rgba(0,0,0,0.13)",
+                      padding: "18px 22px 12px 22px",
+                      zIndex: 10,
+                      fontSize: 15,
+                      color: "#222",
+                      marginTop: 8
+                    }}
+                  >
+                    <div style={{fontWeight: 600, marginBottom: 12, fontSize: 17}}>Активные задачи</div>
+                    {project.tasks.filter(t => t.status === "in_progress").length > 0 ? (
+                      <ul style={{listStyle: "none", padding: 0, margin: 0}}>
+                        {project.tasks.filter(t => t.status === "in_progress").map(t => (
+                          <li
+                            key={t.id}
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "space-between",
+                              marginBottom: 10,
+                              background: "#f6fcff",
+                              borderRadius: 10,
+                              padding: "10px 14px",
+                              opacity: fadingTasks[t.id] ? 0 : 1,
+                              transition: "opacity 0.4s"
+                            }}
+                          >
+                            <div>
+                              <span style={{fontWeight: 500}}>{t.title}</span>
+                              <span style={{marginLeft: 12, color: "#888", fontSize: 14}}>
+                                {getTaskAssignee(idx, t.id)}
+                              </span>
+                            </div>
+                            <button
+                              style={{
+                                background: "#4CAF50",
+                                color: "#fff",
+                                border: "none",
+                                borderRadius: 8,
+                                padding: "6px 14px",
+                                fontWeight: 600,
+                                cursor: "pointer",
+                                fontSize: 15,
+                                transition: "background 0.2s"
+                              }}
+                              onClick={() => handleCompleteTask(idx, t.id)}
+                              title="Отметить выполненной"
+                            >
+                              Выполнено
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <div style={{color: "#bbb", fontSize: 15}}>Нет задач в работе</div>
+                    )}
+                  </div>
+                )}
               </div>
             ))}
           </div>
 
-          <div className="tasks-columns-row">
-            {projects.map((project, idx) => (
-              <div
-                className="tasks-column-main"
-                key={idx}
-                style={{
-                  background: "#fff",
-                  borderRadius: 28,
-                  minWidth: 240,
-                  minHeight: 260,
-                  marginTop: 8,
-                  boxShadow: "0 4px 18px rgba(0,0,0,0.10)",
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  justifyContent: "flex-start"
-                }}
-              >
-                <div
-                  style={{
-                    fontWeight: 600,
-                    fontSize: 20,
-                    margin: "18px 0 10px 0",
-                    color: idx === activeProject ? "#5bbd6b" : "#222"
-                  }}
-                >
-                  {project.name}
-                </div>
-                <div style={{width: "90%", minHeight: 40}}>
-                  {project.tasks && project.tasks.filter(t => t.status === "new" || t.status === "in_progress").length > 0 ? (
-                    <ul style={{listStyle: "none", padding: 0, margin: 0}}>
-                      {project.tasks
-                        .filter(t => t.status === "new" || t.status === "in_progress")
-                        .map(t => (
-                          <li key={t.id} style={{
-                            background: "#f6fcff",
-                            borderRadius: 12,
-                            margin: "8px 0",
-                            padding: "10px 14px",
-                            boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
-                            fontSize: 16,
-                            color: "#222",
-                            display: "flex",
-                            alignItems: "center"
-                          }}>
-                            {t.title}
-                            {t.status === "in_progress" && (
-                              <span style={{marginLeft: 8, color: "#bfaee5", fontWeight: 500, fontSize: 14}}>(в работе)</span>
-                            )}
-                          </li>
-                        ))}
-                    </ul>
-                  ) : (
-                    <div style={{color: "#bbb", fontSize: 15, marginTop: 16}}>Нет активных задач</div>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
+          {/* Удалить старый блок tasks-columns-row */}
         </div>
       </div>
 
@@ -302,12 +365,31 @@ const App: React.FC = () => {
                 <div
                   key={idx}
                   className="modal-list-item"
-                  onClick={() => {
-                    setSelectedProjectIdx(idx);
-                    setProjectsModal(false);
-                  }}
+                  style={{display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8}}
                 >
-                  {project.name}
+                  <span
+                    style={{flex: 1, cursor: "pointer"}}
+                    onClick={() => {
+                      setSelectedProjectIdx(idx);
+                      setProjectsModal(false);
+                    }}
+                  >
+                    {project.name}
+                  </span>
+                  <button
+                    style={{
+                      background: "none",
+                      border: "none",
+                      color: "#c00",
+                      fontSize: 18,
+                      cursor: "pointer",
+                      marginLeft: 8
+                    }}
+                    title="Удалить проект"
+                    onClick={() => handleDeleteProject(idx)}
+                  >
+                    <i className="fa-solid fa-trash"></i>
+                  </button>
                 </div>
               ))}
               <button className="modal-list-item add" onClick={() => setProjectForm(true)}>
@@ -587,19 +669,41 @@ const App: React.FC = () => {
               >×</button>
             </div>
             {/* Main Board */}
-            <div style={{display: "flex", width: "100%", gap: 24, alignItems: "stretch"}}>
+            <div
+              style={{
+                display: "flex",
+                width: "100%",
+                gap: 24,
+                alignItems: "stretch",
+                flexWrap: "wrap"
+              }}
+            >
               {/* Задачи */}
-              <div style={{display: "flex", flex: 3, gap: 18}}>
-                {/* Новые задачи */}
-                <div style={{
-                  background: "#bfe5c6",
-                  borderRadius: 18,
-                  flex: 1,
-                  minWidth: 180,
-                  padding: 18,
+              <div
+                style={{
                   display: "flex",
-                  flexDirection: "column"
-                }}>
+                  flex: 3,
+                  gap: 18,
+                  width: "100%",
+                  minWidth: 0
+                }}
+              >
+                {/* Новые задачи */}
+                <div
+                  style={{
+                    background: "#bfe5c6",
+                    borderRadius: 18,
+                    flex: 1,
+                    minWidth: 180,
+                    maxWidth: taskEdit && taskEdit.mode && taskEdit.status === "new" && taskEdit.id === null ? 420 : 340,
+                    padding: 18,
+                    display: "flex",
+                    flexDirection: "column",
+                    transition: "max-width 0.3s, min-width 0.3s",
+                    maxHeight: 400,
+                    overflowY: "auto"
+                  }}
+                >
                   <div style={{fontWeight: 600, fontSize: 18, marginBottom: 10}}>Новые задачи</div>
                   <div style={{flex: 1}}>
                     {projects[selectedProjectIdx].tasks.filter(t => t.status === "new").map(task => (
@@ -612,37 +716,56 @@ const App: React.FC = () => {
                         boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
                         display: "flex",
                         alignItems: "center",
-                        justifyContent: "space-between"
+                        justifyContent: "space-between",
+                        minWidth: 0
                       }}>
                         {taskEdit && taskEdit.mode === "edit" && taskEdit.id === task.id ? (
                           <>
-                            <input
-                              value={taskEdit.value}
-                              onChange={e => setTaskEdit({ ...taskEdit, value: e.target.value })}
-                              style={{flex: 1, marginRight: 8, fontSize: 16}}
-                            />
-                            <button
-                              className="task-move-btn"
-                              title="Сохранить"
-                              onClick={() => {
-                                const arr = [...projects];
-                                arr[selectedProjectIdx].tasks = arr[selectedProjectIdx].tasks.map(t =>
-                                  t.id === task.id ? { ...t, title: taskEdit.value } : t
-                                );
-                                setProjects(arr);
-                                setTaskEdit(null);
-                              }}
-                            >✔</button>
-                            <button
-                              className="task-move-btn"
-                              title="Отмена"
-                              onClick={() => setTaskEdit(null)}
-                            >×</button>
+                            <div style={{flex: 1, marginRight: 8}}>
+                              <input
+                                value={taskEdit.value}
+                                onChange={e => setTaskEdit({ ...taskEdit, value: e.target.value })}
+                                style={{width: "100%", fontSize: 16, marginBottom: 6}}
+                                placeholder="Название задачи"
+                              />
+                              <textarea
+                                value={taskEdit.description ?? ""}
+                                onChange={e => setTaskEdit({ ...taskEdit, description: e.target.value })}
+                                style={{width: "100%", fontSize: 15, borderRadius: 6, padding: 6, minHeight: 38}}
+                                placeholder="Описание задачи"
+                              />
+                            </div>
+                            <div style={{display: "flex", flexDirection: "column", gap: 4}}>
+                              <button
+                                className="task-move-btn"
+                                title="Сохранить"
+                                onClick={() => {
+                                  const arr = [...projects];
+                                  arr[selectedProjectIdx].tasks = arr[selectedProjectIdx].tasks.map(t =>
+                                    t.id === task.id
+                                      ? { ...t, title: taskEdit.value, description: taskEdit.description ?? "" }
+                                      : t
+                                  );
+                                  setProjects(arr);
+                                  setTaskEdit(null);
+                                }}
+                              >✔</button>
+                              <button
+                                className="task-move-btn"
+                                title="Отмена"
+                                onClick={() => setTaskEdit(null)}
+                              >×</button>
+                            </div>
                           </>
                         ) : (
                           <>
-                            <span>{task.title}</span>
-                            <div style={{display: "flex", gap: 6}}>
+                            <div style={{flex: 1}}>
+                              <span>{task.title}</span>
+                              {task.description && (
+                                <div style={{fontSize: 13, color: "#666", marginTop: 2, whiteSpace: "pre-line"}}>{task.description}</div>
+                              )}
+                            </div>
+                            <div style={{display: "flex", flexDirection: "column", gap: 4}}>
                               <button
                                 className="task-move-btn"
                                 title="В работу"
@@ -657,7 +780,13 @@ const App: React.FC = () => {
                               <button
                                 className="task-move-btn"
                                 title="Редактировать"
-                                onClick={() => setTaskEdit({ mode: "edit", status: "new", value: task.title, id: task.id })}
+                                onClick={() => setTaskEdit({
+                                  mode: "edit",
+                                  status: "new",
+                                  value: task.title,
+                                  id: task.id,
+                                  description: task.description ?? ""
+                                })}
                               ><i className="fa-regular fa-pen-to-square"></i></button>
                               <button
                                 className="task-move-btn"
@@ -683,49 +812,67 @@ const App: React.FC = () => {
                         fontSize: 16,
                         boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
                         display: "flex",
-                        alignItems: "center"
+                        alignItems: "center",
+                        minWidth: 0
                       }}>
-                        <input
-                          value={taskEdit.value}
-                          onChange={e => setTaskEdit({ ...taskEdit, value: e.target.value })}
-                          placeholder="Название задачи"
-                          style={{flex: 1, marginRight: 8, fontSize: 16}}
-                        />
-                        <button
-                          className="task-move-btn"
-                          title="Добавить"
-                          onClick={() => {
-                            if (taskEdit.value.trim()) {
-                              const arr = [...projects];
-                              arr[selectedProjectIdx].tasks.push({
-                                id: Date.now(),
-                                title: taskEdit.value.trim(),
-                                status: "new"
-                              });
-                              setProjects(arr);
-                              setTaskEdit(null);
-                            }
-                          }}
-                        >✔</button>
-                        <button
-                          className="task-move-btn"
-                          title="Отмена"
-                          onClick={() => setTaskEdit(null)}
-                        >×</button>
+                        <div style={{flex: 1, marginRight: 8}}>
+                          <input
+                            value={taskEdit.value}
+                            onChange={e => setTaskEdit({ ...taskEdit, value: e.target.value })}
+                            placeholder="Название задачи"
+                            style={{width: "100%", fontSize: 16, marginBottom: 6}}
+                          />
+                          <textarea
+                            value={taskEdit.description ?? ""}
+                            onChange={e => setTaskEdit({ ...taskEdit, description: e.target.value })}
+                            placeholder="Описание задачи"
+                            style={{width: "100%", fontSize: 15, borderRadius: 6, padding: 6, minHeight: 38}}
+                          />
+                        </div>
+                        <div style={{display: "flex", flexDirection: "column", gap: 4}}>
+                          <button
+                            className="task-move-btn"
+                            title="Добавить"
+                            onClick={() => {
+                              if (taskEdit.value.trim()) {
+                                const arr = [...projects];
+                                arr[selectedProjectIdx].tasks.push({
+                                  id: Date.now(),
+                                  title: taskEdit.value.trim(),
+                                  description: taskEdit.description ?? "",
+                                  status: "new"
+                                });
+                                setProjects(arr);
+                                setTaskEdit(null);
+                              }
+                            }}
+                          >✔</button>
+                          <button
+                            className="task-move-btn"
+                            title="Отмена"
+                            onClick={() => setTaskEdit(null)}
+                          >×</button>
+                        </div>
                       </div>
                     )}
                   </div>
                 </div>
                 {/* В работе */}
-                <div style={{
-                  background: "#bfaee5",
-                  borderRadius: 18,
-                  flex: 1,
-                  minWidth: 180,
-                  padding: 18,
-                  display: "flex",
-                  flexDirection: "column"
-                }}>
+                <div
+                  style={{
+                    background: "#bfaee5",
+                    borderRadius: 18,
+                    flex: 1,
+                    minWidth: 180,
+                    maxWidth: taskEdit && taskEdit.mode && taskEdit.status === "in_progress" && taskEdit.id === null ? 420 : 340,
+                    padding: 18,
+                    display: "flex",
+                    flexDirection: "column",
+                    transition: "max-width 0.3s, min-width 0.3s",
+                    maxHeight: 400,
+                    overflowY: "auto"
+                  }}
+                >
                   <div style={{fontWeight: 600, fontSize: 18, marginBottom: 10}}>В работе</div>
                   <div style={{flex: 1}}>
                     {projects[selectedProjectIdx].tasks.filter(t => t.status === "in_progress").map(task => (
@@ -738,37 +885,56 @@ const App: React.FC = () => {
                         boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
                         display: "flex",
                         alignItems: "center",
-                        justifyContent: "space-between"
+                        justifyContent: "space-between",
+                        minWidth: 0
                       }}>
                         {taskEdit && taskEdit.mode === "edit" && taskEdit.id === task.id ? (
                           <>
-                            <input
-                              value={taskEdit.value}
-                              onChange={e => setTaskEdit({ ...taskEdit, value: e.target.value })}
-                              style={{flex: 1, marginRight: 8, fontSize: 16}}
-                            />
-                            <button
-                              className="task-move-btn"
-                              title="Сохранить"
-                              onClick={() => {
-                                const arr = [...projects];
-                                arr[selectedProjectIdx].tasks = arr[selectedProjectIdx].tasks.map(t =>
-                                  t.id === task.id ? { ...t, title: taskEdit.value } : t
-                                );
-                                setProjects(arr);
-                                setTaskEdit(null);
-                              }}
-                            >✔</button>
-                            <button
-                              className="task-move-btn"
-                              title="Отмена"
-                              onClick={() => setTaskEdit(null)}
-                            >×</button>
+                            <div style={{flex: 1, marginRight: 8}}>
+                              <input
+                                value={taskEdit.value}
+                                onChange={e => setTaskEdit({ ...taskEdit, value: e.target.value })}
+                                style={{width: "100%", fontSize: 16, marginBottom: 6}}
+                                placeholder="Название задачи"
+                              />
+                              <textarea
+                                value={taskEdit.description ?? ""}
+                                onChange={e => setTaskEdit({ ...taskEdit, description: e.target.value })}
+                                style={{width: "100%", fontSize: 15, borderRadius: 6, padding: 6, minHeight: 38}}
+                                placeholder="Описание задачи"
+                              />
+                            </div>
+                            <div style={{display: "flex", flexDirection: "column", gap: 4}}>
+                              <button
+                                className="task-move-btn"
+                                title="Сохранить"
+                                onClick={() => {
+                                  const arr = [...projects];
+                                  arr[selectedProjectIdx].tasks = arr[selectedProjectIdx].tasks.map(t =>
+                                    t.id === task.id
+                                      ? { ...t, title: taskEdit.value, description: taskEdit.description ?? "" }
+                                      : t
+                                  );
+                                  setProjects(arr);
+                                  setTaskEdit(null);
+                                }}
+                              >✔</button>
+                              <button
+                                className="task-move-btn"
+                                title="Отмена"
+                                onClick={() => setTaskEdit(null)}
+                              >×</button>
+                            </div>
                           </>
                         ) : (
                           <>
-                            <span>{task.title}</span>
-                            <div style={{display: "flex", gap: 6}}>
+                            <div style={{flex: 1}}>
+                              <span>{task.title}</span>
+                              {task.description && (
+                                <div style={{fontSize: 13, color: "#666", marginTop: 2, whiteSpace: "pre-line"}}>{task.description}</div>
+                              )}
+                            </div>
+                            <div style={{display: "flex", flexDirection: "column", gap: 4}}>
                               <button
                                 className="task-move-btn"
                                 title="Готово"
@@ -783,7 +949,13 @@ const App: React.FC = () => {
                               <button
                                 className="task-move-btn"
                                 title="Редактировать"
-                                onClick={() => setTaskEdit({ mode: "edit", status: "in_progress", value: task.title, id: task.id })}
+                                onClick={() => setTaskEdit({
+                                  mode: "edit",
+                                  status: "in_progress",
+                                  value: task.title,
+                                  id: task.id,
+                                  description: task.description ?? ""
+                                })}
                               ><i className="fa-regular fa-pen-to-square"></i></button>
                               <button
                                 className="task-move-btn"
@@ -809,49 +981,67 @@ const App: React.FC = () => {
                         fontSize: 16,
                         boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
                         display: "flex",
-                        alignItems: "center"
+                        alignItems: "center",
+                        minWidth: 0
                       }}>
-                        <input
-                          value={taskEdit.value}
-                          onChange={e => setTaskEdit({ ...taskEdit, value: e.target.value })}
-                          placeholder="Название задачи"
-                          style={{flex: 1, marginRight: 8, fontSize: 16}}
-                        />
-                        <button
-                          className="task-move-btn"
-                          title="Добавить"
-                          onClick={() => {
-                            if (taskEdit.value.trim()) {
-                              const arr = [...projects];
-                              arr[selectedProjectIdx].tasks.push({
-                                id: Date.now(),
-                                title: taskEdit.value.trim(),
-                                status: "in_progress"
-                              });
-                              setProjects(arr);
-                              setTaskEdit(null);
-                            }
-                          }}
-                        >✔</button>
-                        <button
-                          className="task-move-btn"
-                          title="Отмена"
-                          onClick={() => setTaskEdit(null)}
-                        >×</button>
+                        <div style={{flex: 1, marginRight: 8}}>
+                          <input
+                            value={taskEdit.value}
+                            onChange={e => setTaskEdit({ ...taskEdit, value: e.target.value })}
+                            placeholder="Название задачи"
+                            style={{width: "100%", fontSize: 16, marginBottom: 6}}
+                          />
+                          <textarea
+                            value={taskEdit.description ?? ""}
+                            onChange={e => setTaskEdit({ ...taskEdit, description: e.target.value })}
+                            placeholder="Описание задачи"
+                            style={{width: "100%", fontSize: 15, borderRadius: 6, padding: 6, minHeight: 38}}
+                          />
+                        </div>
+                        <div style={{display: "flex", flexDirection: "column", gap: 4}}>
+                          <button
+                            className="task-move-btn"
+                            title="Добавить"
+                            onClick={() => {
+                              if (taskEdit.value.trim()) {
+                                const arr = [...projects];
+                                arr[selectedProjectIdx].tasks.push({
+                                  id: Date.now(),
+                                  title: taskEdit.value.trim(),
+                                  description: taskEdit.description ?? "",
+                                  status: "in_progress"
+                                });
+                                setProjects(arr);
+                                setTaskEdit(null);
+                              }
+                            }}
+                          >✔</button>
+                          <button
+                            className="task-move-btn"
+                            title="Отмена"
+                            onClick={() => setTaskEdit(null)}
+                          >×</button>
+                        </div>
                       </div>
                     )}
                   </div>
                 </div>
                 {/* Готовое */}
-                <div style={{
-                  background: "#e5bfd2",
-                  borderRadius: 18,
-                  flex: 1,
-                  minWidth: 180,
-                  padding: 18,
-                  display: "flex",
-                  flexDirection: "column"
-                }}>
+                <div
+                  style={{
+                    background: "#e5bfd2",
+                    borderRadius: 18,
+                    flex: 1,
+                    minWidth: 180,
+                    maxWidth: taskEdit && taskEdit.mode && taskEdit.status === "done" && taskEdit.id === null ? 420 : 340,
+                    padding: 18,
+                    display: "flex",
+                    flexDirection: "column",
+                    transition: "max-width 0.3s, min-width 0.3s",
+                    maxHeight: 400,
+                    overflowY: "auto"
+                  }}
+                >
                   <div style={{fontWeight: 600, fontSize: 18, marginBottom: 10}}>Готовое</div>
                   <div style={{flex: 1}}>
                     {projects[selectedProjectIdx].tasks.filter(t => t.status === "done").map(task => (
@@ -864,41 +1054,66 @@ const App: React.FC = () => {
                         boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
                         display: "flex",
                         alignItems: "center",
-                        justifyContent: "space-between"
+                        justifyContent: "space-between",
+                        minWidth: 0
                       }}>
                         {taskEdit && taskEdit.mode === "edit" && taskEdit.id === task.id ? (
                           <>
-                            <input
-                              value={taskEdit.value}
-                              onChange={e => setTaskEdit({ ...taskEdit, value: e.target.value })}
-                              style={{flex: 1, marginRight: 8, fontSize: 16}}
-                            />
-                            <button
-                              className="task-move-btn"
-                              title="Сохранить"
-                              onClick={() => {
-                                const arr = [...projects];
-                                arr[selectedProjectIdx].tasks = arr[selectedProjectIdx].tasks.map(t =>
-                                  t.id === task.id ? { ...t, title: taskEdit.value } : t
-                                );
-                                setProjects(arr);
-                                setTaskEdit(null);
-                              }}
-                            >✔</button>
-                            <button
-                              className="task-move-btn"
-                              title="Отмена"
-                              onClick={() => setTaskEdit(null)}
-                            >×</button>
+                            <div style={{flex: 1, marginRight: 8}}>
+                              <input
+                                value={taskEdit.value}
+                                onChange={e => setTaskEdit({ ...taskEdit, value: e.target.value })}
+                                style={{width: "100%", fontSize: 16, marginBottom: 6}}
+                                placeholder="Название задачи"
+                              />
+                              <textarea
+                                value={taskEdit.description ?? ""}
+                                onChange={e => setTaskEdit({ ...taskEdit, description: e.target.value })}
+                                style={{width: "100%", fontSize: 15, borderRadius: 6, padding: 6, minHeight: 38}}
+                                placeholder="Описание задачи"
+                              />
+                            </div>
+                            <div style={{display: "flex", flexDirection: "column", gap: 4}}>
+                              <button
+                                className="task-move-btn"
+                                title="Сохранить"
+                                onClick={() => {
+                                  const arr = [...projects];
+                                  arr[selectedProjectIdx].tasks = arr[selectedProjectIdx].tasks.map(t =>
+                                    t.id === task.id
+                                      ? { ...t, title: taskEdit.value, description: taskEdit.description ?? "" }
+                                      : t
+                                  );
+                                  setProjects(arr);
+                                  setTaskEdit(null);
+                                }}
+                              >✔</button>
+                              <button
+                                className="task-move-btn"
+                                title="Отмена"
+                                onClick={() => setTaskEdit(null)}
+                              >×</button>
+                            </div>
                           </>
                         ) : (
                           <>
-                            <span>{task.title}</span>
-                            <div style={{display: "flex", gap: 6}}>
+                            <div style={{flex: 1}}>
+                              <span>{task.title}</span>
+                              {task.description && (
+                                <div style={{fontSize: 13, color: "#666", marginTop: 2, whiteSpace: "pre-line"}}>{task.description}</div>
+                              )}
+                            </div>
+                            <div style={{display: "flex", flexDirection: "column", gap: 4}}>
                               <button
                                 className="task-move-btn"
                                 title="Редактировать"
-                                onClick={() => setTaskEdit({ mode: "edit", status: "done", value: task.title, id: task.id })}
+                                onClick={() => setTaskEdit({
+                                  mode: "edit",
+                                  status: "done",
+                                  value: task.title,
+                                  id: task.id,
+                                  description: task.description ?? ""
+                                })}
                               ><i className="fa-regular fa-pen-to-square"></i></button>
                               <button
                                 className="task-move-btn"
@@ -924,35 +1139,47 @@ const App: React.FC = () => {
                         fontSize: 16,
                         boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
                         display: "flex",
-                        alignItems: "center"
+                        alignItems: "center",
+                        minWidth: 0
                       }}>
-                        <input
-                          value={taskEdit.value}
-                          onChange={e => setTaskEdit({ ...taskEdit, value: e.target.value })}
-                          placeholder="Название задачи"
-                          style={{flex: 1, marginRight: 8, fontSize: 16}}
-                        />
-                        <button
-                          className="task-move-btn"
-                          title="Добавить"
-                          onClick={() => {
-                            if (taskEdit.value.trim()) {
-                              const arr = [...projects];
-                              arr[selectedProjectIdx].tasks.push({
-                                id: Date.now(),
-                                title: taskEdit.value.trim(),
-                                status: "done"
-                              });
-                              setProjects(arr);
-                              setTaskEdit(null);
-                            }
-                          }}
-                        >✔</button>
-                        <button
-                          className="task-move-btn"
-                          title="Отмена"
-                          onClick={() => setTaskEdit(null)}
-                        >×</button>
+                        <div style={{flex: 1, marginRight: 8}}>
+                          <input
+                            value={taskEdit.value}
+                            onChange={e => setTaskEdit({ ...taskEdit, value: e.target.value })}
+                            placeholder="Название задачи"
+                            style={{width: "100%", fontSize: 16, marginBottom: 6}}
+                          />
+                          <textarea
+                            value={taskEdit.description ?? ""}
+                            onChange={e => setTaskEdit({ ...taskEdit, description: e.target.value })}
+                            placeholder="Описание задачи"
+                            style={{width: "100%", fontSize: 15, borderRadius: 6, padding: 6, minHeight: 38}}
+                          />
+                        </div>
+                        <div style={{display: "flex", flexDirection: "column", gap: 4}}>
+                          <button
+                            className="task-move-btn"
+                            title="Добавить"
+                            onClick={() => {
+                              if (taskEdit.value.trim()) {
+                                const arr = [...projects];
+                                arr[selectedProjectIdx].tasks.push({
+                                  id: Date.now(),
+                                  title: taskEdit.value.trim(),
+                                  description: taskEdit.description ?? "",
+                                  status: "done"
+                                });
+                                setProjects(arr);
+                                setTaskEdit(null);
+                              }
+                            }}
+                          >✔</button>
+                          <button
+                            className="task-move-btn"
+                            title="Отмена"
+                            onClick={() => setTaskEdit(null)}
+                          >×</button>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -967,29 +1194,136 @@ const App: React.FC = () => {
                   minHeight: 110,
                   marginBottom: 8,
                   display: "flex",
-                  flexDirection: "column"
+                  flexDirection: "column",
+                  maxHeight: 200,
+                  overflowY: "auto"
                 }}>
                   <div style={{display: "flex", alignItems: "center", marginBottom: 8}}>
                     <span style={{fontWeight: 600, fontSize: 16, flex: 1}}>Команда</span>
-                    <button className="team-edit-btn" title="Редактировать" style={{background: "none", border: "none", cursor: "pointer"}}>
-                      <i className="fa-regular fa-pen-to-square"></i>
+                    <button
+                      className="team-edit-btn"
+                      title={editTeam ? "Сохранить" : "Редактировать"}
+                      style={{background: "none", border: "none", cursor: "pointer"}}
+                      onClick={() => {
+                        if (editTeam) setEditTeam(false);
+                        else setEditTeam(true);
+                      }}
+                    >
+                      <i className={`fa-regular ${editTeam ? "fa-floppy-disk" : "fa-pen-to-square"}`}></i>
                     </button>
                   </div>
-                  {projects[selectedProjectIdx].team.map((member, idx) => (
-                    <div key={idx} className="project-team-member">{member}</div>
-                  ))}
+                  {editTeam ? (
+                    <>
+                      {employees.map((emp, idx) => {
+                        const isInTeam = projects[selectedProjectIdx].team.includes(emp.name);
+                        return (
+                          <div key={idx} style={{display: "flex", alignItems: "center", gap: 8, marginBottom: 4}}>
+                            <input
+                              type="checkbox"
+                              checked={isInTeam}
+                              onChange={e => {
+                                const arr = [...projects];
+                                if (e.target.checked) {
+                                  arr[selectedProjectIdx].team = [...arr[selectedProjectIdx].team, emp.name];
+                                } else {
+                                  arr[selectedProjectIdx].team = arr[selectedProjectIdx].team.filter(n => n !== emp.name);
+                                }
+                                setProjects(arr);
+                              }}
+                            />
+                            <span>{emp.name}</span>
+                            <span style={{color: "#888", fontSize: 13}}>({emp.role})</span>
+                          </div>
+                        );
+                      })}
+                    </>
+                  ) : (
+                    projects[selectedProjectIdx].team.map((member, idx) => (
+                      <div key={idx} className="project-team-member">{member}</div>
+                    ))
+                  )}
                 </div>
                 <div style={{
                   background: "#fff",
                   borderRadius: 14,
                   padding: 12,
-                  minHeight: 60
+                  minHeight: 60,
+                  maxHeight: 200,
+                  overflowY: "auto"
                 }}>
                   <div style={{fontWeight: 600, fontSize: 15, marginBottom: 6}}>Комментарии</div>
                   <div className="project-comments-list">
                     {projects[selectedProjectIdx].comments.map((c, idx) => (
-                      <div key={idx} className="project-comment">{c}</div>
+                      <div key={idx} className="project-comment" style={{display: "flex", alignItems: "center", gap: 6, marginBottom: 4}}>
+                        {commentEditIdx === idx ? (
+                          <>
+                            <input
+                              value={commentEditValue}
+                              onChange={e => setCommentEditValue(e.target.value)}
+                              style={{flex: 1, fontSize: 15, marginRight: 6}}
+                            />
+                            <button
+                              style={{border: "none", background: "none", color: "#4CAF50", fontSize: 18, cursor: "pointer"}}
+                              title="Сохранить"
+                              onClick={() => {
+                                const arr = [...projects];
+                                arr[selectedProjectIdx].comments[idx] = commentEditValue;
+                                setProjects(arr);
+                                setCommentEditIdx(null);
+                                setCommentEditValue("");
+                              }}
+                            >✔</button>
+                            <button
+                              style={{border: "none", background: "none", color: "#c00", fontSize: 18, cursor: "pointer"}}
+                              title="Отмена"
+                              onClick={() => setCommentEditIdx(null)}
+                            >×</button>
+                          </>
+                        ) : (
+                          <>
+                            <span style={{flex: 1}}>{c}</span>
+                            <button
+                              style={{border: "none", background: "none", color: "#888", fontSize: 16, cursor: "pointer"}}
+                              title="Редактировать"
+                              onClick={() => {
+                                setCommentEditIdx(idx);
+                                setCommentEditValue(c);
+                              }}
+                            ><i className="fa-regular fa-pen-to-square"></i></button>
+                            <button
+                              style={{border: "none", background: "none", color: "#c00", fontSize: 16, cursor: "pointer"}}
+                              title="Удалить"
+                              onClick={() => {
+                                const arr = [...projects];
+                                arr[selectedProjectIdx].comments.splice(idx, 1);
+                                setProjects(arr);
+                              }}
+                            >🗑️</button>
+                          </>
+                        )}
+                      </div>
                     ))}
+                  </div>
+                  {/* Добавление нового комментария */}
+                  <div style={{display: "flex", alignItems: "center", gap: 6, marginTop: 8}}>
+                    <input
+                      value={newCommentValue}
+                      onChange={e => setNewCommentValue(e.target.value)}
+                      placeholder="Добавить комментарий"
+                      style={{flex: 1, fontSize: 15}}
+                    />
+                    <button
+                      style={{border: "none", background: "none", color: "#4CAF50", fontSize: 18, cursor: "pointer"}}
+                      title="Добавить"
+                      onClick={() => {
+                        if (newCommentValue.trim()) {
+                          const arr = [...projects];
+                          arr[selectedProjectIdx].comments.push(newCommentValue.trim());
+                          setProjects(arr);
+                          setNewCommentValue("");
+                        }
+                      }}
+                    >+</button>
                   </div>
                 </div>
               </div>
