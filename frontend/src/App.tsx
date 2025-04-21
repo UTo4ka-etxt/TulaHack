@@ -96,9 +96,46 @@ const App: React.FC = () => {
   const [commentEditValue, setCommentEditValue] = useState("");
   const [newCommentValue, setNewCommentValue] = useState("");
 
+  // --- Удалить useRef и маленький график, оставить только большой график ---
   // --- Chart.js Pie Chart Ref ---
-  const pieChartRef = useRef<HTMLCanvasElement | null>(null);
-  const pieChartInstance = useRef<Chart | null>(null);
+  // const pieChartRef = useRef<HTMLCanvasElement | null>(null);
+  // const pieChartInstance = useRef<Chart | null>(null);
+
+  // --- Chart.js Pie Chart Effect для большого графика ---
+  const bigPieChartRef = useRef<HTMLCanvasElement | null>(null);
+  const bigPieChartInstance = useRef<Chart | null>(null);
+
+  useEffect(() => {
+    if (statsModal && bigPieChartRef.current) {
+      const pieData = getProjectStatsPieData();
+      if (bigPieChartInstance.current) {
+        bigPieChartInstance.current.destroy();
+      }
+      bigPieChartInstance.current = new Chart(bigPieChartRef.current, {
+        type: "doughnut",
+        data: {
+          labels: pieData.labels,
+          datasets: [{
+            data: pieData.data,
+            backgroundColor: pieData.colors,
+            borderWidth: 0
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          cutout: "70%",
+          plugins: { legend: { position: "bottom" } }
+        }
+      });
+    }
+    return () => {
+      if (bigPieChartInstance.current) {
+        bigPieChartInstance.current.destroy();
+        bigPieChartInstance.current = null;
+      }
+    };
+  }, [statsModal, statsProjectIdx, projects]);
 
   // Chart.js инициализация
   useEffect(() => {
@@ -184,42 +221,6 @@ const App: React.FC = () => {
       colors: ["#bfe5c6", "#bfaee5", "#e5bfd2"]
     };
   };
-
-  // Chart.js Pie Chart Effect
-  useEffect(() => {
-    if (statsModal && statsTab === "projects" && pieChartRef.current) {
-      const pieData = getProjectStatsPieData();
-      // Удаляем предыдущий график
-      if (pieChartInstance.current) {
-        pieChartInstance.current.destroy();
-      }
-      pieChartInstance.current = new Chart(pieChartRef.current, {
-        type: "doughnut",
-        data: {
-          labels: pieData.labels,
-          datasets: [{
-            data: pieData.data,
-            backgroundColor: pieData.colors,
-            borderWidth: 0
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          cutout: "70%",
-          plugins: { legend: { position: "bottom" } }
-        }
-      });
-    }
-    // Чистим график при закрытии окна/смене вкладки
-    return () => {
-      if (pieChartInstance.current) {
-        pieChartInstance.current.destroy();
-        pieChartInstance.current = null;
-      }
-    };
-    // eslint-disable-next-line
-  }, [statsModal, statsTab, statsProjectIdx, projects]);
 
   // --- ДОБАВИТЬ useEffect для круговой диаграммы справа ---
   useEffect(() => {
@@ -386,7 +387,36 @@ const App: React.FC = () => {
               <Logo2na2s />
             </div>
             <div className="header-right">
-              <span className="status">{status ? "Работаю" : "Отдыхаю"}</span>
+              <span
+                className="status"
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  backgroundColor: "#f0f0f0",
+                  borderRadius: 20,
+                  padding: "5px 15px",
+                  cursor: "pointer",
+                  userSelect: "none"
+                }}
+                onClick={() => setStatus(s => !s)}
+                title="Сменить статус"
+              >
+                <span
+                  style={{
+                    display: "inline-block",
+                    width: 12,
+                    height: 12,
+                    borderRadius: "50%",
+                    marginRight: 8,
+                    background: status ? "#1976d2" : "#ff9800",
+                    boxShadow: status
+                      ? "0 0 0 4px rgba(25,118,210,0.15)"
+                      : "0 0 0 4px rgba(255,152,0,0.15)",
+                    transition: "background 0.2s, box-shadow 0.2s"
+                  }}
+                />
+                {status ? "Работаю" : "Отдыхаю"}
+              </span>
               <i className="fa-regular fa-user account-icon" />
               <i className="fa-regular fa-bell notifications" />
             </div>
@@ -396,93 +426,83 @@ const App: React.FC = () => {
           <h1 className="main-title">ЗАДАЧИ</h1>
 
           {/* Проекты */}
-          <div className="projects-row" style={{display: "flex", flexDirection: "row", gap: 24, marginBottom: 32}}>
+          <div className="projects-row" style={{display: "flex", flexDirection: "row", gap: 36, marginBottom: 32}}>
             {projects.map((project, idx) => (
               <div
                 key={idx}
                 className={`project-pill${activeProject === idx ? " active" : ""}`}
-                onClick={() => setActiveProject(activeProject === idx ? null : idx)}
+                onClick={() => setSelectedProjectIdx(idx)}
                 style={{
-                  minWidth: 180,
-                  minHeight: 48,
+                  minWidth: 340,
+                  maxWidth: 420,
+                  minHeight: 80,
                   background: idx === 0 ? "#bfe5c6" : idx === 1 ? "#ffe0a3" : idx === 2 ? "#ffffb5" : "#f3f3f3",
                   color: activeProject === idx ? "#fff" : "#222",
                   boxShadow: activeProject === idx ? "0 4px 18px rgba(0,0,0,0.12)" : "0 2px 8px rgba(0,0,0,0.08)",
                   fontWeight: activeProject === idx ? 600 : 500,
                   border: "none",
                   position: "relative",
-                  cursor: "pointer"
+                  cursor: "pointer",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "flex-start",
+                  transition: "box-shadow 0.2s, background 0.2s"
                 }}
               >
-                {project.name}
-                {/* Список активных задач под проектом */}
-                {activeProject === idx && (
-                  <div
-                    style={{
-                      position: "absolute",
-                      top: "110%",
-                      left: "50%",
-                      transform: "translateX(-50%)",
-                      minWidth: 340,
-                      background: "#fff",
-                      borderRadius: 16,
-                      boxShadow: "0 8px 32px rgba(0,0,0,0.13)",
-                      padding: "18px 22px 12px 22px",
-                      zIndex: 10,
-                      fontSize: 15,
-                      color: "#222",
-                      marginTop: 8
-                    }}
-                  >
-                    <div style={{fontWeight: 600, marginBottom: 12, fontSize: 17}}>Активные задачи</div>
-                    {project.tasks.filter(t => t.status === "in_progress").length > 0 ? (
-                      <ul style={{listStyle: "none", padding: 0, margin: 0}}>
-                        {project.tasks.filter(t => t.status === "in_progress").map(t => (
-                          <li
-                            key={t.id}
-                            style={{
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "space-between",
-                              marginBottom: 10,
-                              background: "#f6fcff",
-                              borderRadius: 10,
-                              padding: "10px 14px",
-                              opacity: fadingTasks[t.id] ? 0 : 1,
-                              transition: "opacity 0.4s"
-                            }}
-                          >
-                            <div>
-                              <span style={{fontWeight: 500}}>{t.title}</span>
-                              <span style={{marginLeft: 12, color: "#888", fontSize: 14}}>
-                                {getTaskAssignee(idx, t.id)}
-                              </span>
-                            </div>
-                            <button
-                              style={{
-                                background: "#4CAF50",
-                                color: "#fff",
-                                border: "none",
-                                borderRadius: 8,
-                                padding: "6px 14px",
-                                fontWeight: 600,
-                                cursor: "pointer",
-                                fontSize: 15,
-                                transition: "background 0.2s"
-                              }}
-                              onClick={() => handleCompleteTask(idx, t.id)}
-                              title="Отметить выполненной"
-                            >
-                              Выполнено
-                            </button>
-                          </li>
-                        ))}
-                      </ul>
-                    ) : (
-                      <div style={{color: "#bbb", fontSize: 15}}>Нет задач в работе</div>
-                    )}
-                  </div>
-                )}
+                <div style={{
+                  width: "100%",
+                  textAlign: "center",
+                  fontWeight: 600,
+                  fontSize: 22,
+                  marginBottom: 12,
+                  borderRadius: 18,
+                  background: "rgba(0,0,0,0.06)",
+                  padding: "8px 0"
+                }}>
+                  {project.name}
+                </div>
+                {/* Список активных задач под проектом (всегда отображается) */}
+                <div style={{
+                  width: "98%",
+                  minHeight: 140,
+                  background: "transparent",
+                  borderRadius: 16,
+                  padding: "10px 0 10px 0",
+                  fontSize: 17,
+                  color: "#222",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center"
+                }}>
+                  {project.tasks.filter(t => t.status === "in_progress").length > 0 ? (
+                    <ul style={{listStyle: "none", padding: 0, margin: 0, width: "100%"}}>
+                      {project.tasks.filter(t => t.status === "in_progress").map(t => (
+                        <li
+                          key={t.id}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            marginBottom: 12,
+                            background: "#f6fcff",
+                            borderRadius: 12,
+                            padding: "12px 18px",
+                            width: "100%",
+                            fontSize: 17
+                          }}
+                        >
+                          <span style={{fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap"}}>{t.title}</span>
+                          <span style={{marginLeft: 18, color: "#888", fontSize: 15, flexShrink: 0}}>
+                            {t.assignee || "—"}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <div style={{color: "#bbb", fontSize: 16, width: "100%", textAlign: "center"}}>Нет задач в работе</div>
+                  )}
+                </div>
               </div>
             ))}
           </div>
@@ -645,9 +665,10 @@ const App: React.FC = () => {
                     <option value={idx} key={idx}>{p.name}</option>
                   ))}
                 </select>
-                <div style={{width: 110, height: 110, position: "relative", margin: "0 auto"}}>
+                {/* Удалить маленький график */}
+                {/* <div style={{width: 110, height: 110, position: "relative", margin: "0 auto"}}>
                   <canvas ref={pieChartRef} width={110} height={110} />
-                </div>
+                </div> */}
                 <div style={{display: "flex", flexDirection: "column", gap: 10, marginTop: 18}}>
                   <div style={{display: "flex", alignItems: "center", gap: 8}}>
                     <span style={{
@@ -698,7 +719,7 @@ const App: React.FC = () => {
             {/* Правая часть */}
             <div style={{flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center"}}>
               <div style={{fontSize: 28, fontWeight: 600, marginBottom: 24, letterSpacing: 1}}>СТАТИСТИКА</div>
-              {/* Круговая диаграмма по всем задачам всех проектов */}
+              {/* Большая круговая диаграмма, которая меняется при выборе проекта */}
               <div style={{
                 width: 320,
                 height: 320,
@@ -713,7 +734,7 @@ const App: React.FC = () => {
               }}>
                 <div style={{fontWeight: 600, fontSize: 20, marginBottom: 12}}>Соотношение задач</div>
                 <canvas
-                  id="allProjectsPie"
+                  ref={bigPieChartRef}
                   width={220}
                   height={220}
                   style={{marginBottom: 16}}
@@ -930,10 +951,11 @@ const App: React.FC = () => {
                                   style={{
                                     fontSize: 14,
                                     borderRadius: 6,
-                                    padding: "4px 8px",
+                                    padding: "8px 12px",
                                     border: "1px solid #ccc",
                                     marginTop: 2,
-                                    minWidth: 120
+                                    width: "100%", // растянуть на всю ширину карточки задачи
+                                    boxSizing: "border-box"
                                   }}
                                 >
                                   <option value="">— Назначить исполнителя —</option>
@@ -1126,10 +1148,11 @@ const App: React.FC = () => {
                                   style={{
                                     fontSize: 14,
                                     borderRadius: 6,
-                                    padding: "4px 8px",
+                                    padding: "8px 12px",
                                     border: "1px solid #ccc",
                                     marginTop: 2,
-                                    minWidth: 120
+                                    width: "100%", // растянуть на всю ширину карточки задачи
+                                    boxSizing: "border-box"
                                   }}
                                 >
                                   <option value="">— Назначить исполнителя —</option>
@@ -1322,10 +1345,11 @@ const App: React.FC = () => {
                                   style={{
                                     fontSize: 14,
                                     borderRadius: 6,
-                                    padding: "4px 8px",
+                                    padding: "8px 12px",
                                     border: "1px solid #ccc",
                                     marginTop: 2,
-                                    minWidth: 120
+                                    width: "100%", // растянуть на всю ширину карточки задачи
+                                    boxSizing: "border-box"
                                   }}
                                 >
                                   <option value="">— Назначить исполнителя —</option>
