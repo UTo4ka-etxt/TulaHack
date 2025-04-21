@@ -102,7 +102,48 @@ body {
     position: relative;
 }
 
+.header.app-header-rounded {
+    border-radius: 32px;
+    margin: 36px auto 36px auto;
+    box-shadow: 0 4px 24px rgba(80, 120, 120, 0.10);
+    background: #fff;
+    min-height: 110px;
+    max-height: 130px;
+    padding: 0 32px;
+    display: flex;
+    align-items: center;
+    max-width: 520px;
+    width: 100%;
+    position: relative;
+    left: 0;
+    right: 0;
+    transform: none;
+    justify-content: space-between;
+}
+
+.logo-svg {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 54px;
+    min-height: 110px;
+    width: 54px;
+    height: 110px;
+    margin-left: 0;
+    margin-right: 12px;
+}
+
+.logo {
+    /* Оставить только для совместимости, если нужно */
+    font-size: 0;
+    margin-left: 0;
+    background: none;
+    box-shadow: none;
+    padding: 0;
+}
+
 /* Логотип */
+/*
 .logo {
     font-size: 24px;
     font-weight: bold;
@@ -111,6 +152,7 @@ body {
     text-transform: uppercase;
     margin-left: 15px;
 }
+*/
 
 /* Поиск */
 .search-container {

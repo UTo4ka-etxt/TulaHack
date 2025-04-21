@@ -23,15 +23,31 @@ const initialEmployees = [
   { name: "Романов Роман", role: "аналитик" }
 ];
 
+const Logo2na2s = () => (
+  <svg width="110" height="110" viewBox="0 0 54 110" fill="none" xmlns="http://www.w3.org/2000/svg" style={{display: "block"}}>
+    {/* Верхняя двойка */}
+    <text x="27" y="38" textAnchor="middle" fontSize="50" fontWeight="bold" fill="#7FC7A3" fontFamily="Arial, sans-serif">2</text>
+    {/* Синие полоски слева и справа */}
+    <rect x="4" y="34" width="5" height="28" rx="2" fill="#0050B8"/>
+    <rect x="43" y="34" width="5" height="28" rx="2" fill="#0050B8"/>
+    {/* na по центру */}
+    <text x="27" y="50" textAnchor="middle" fontSize="30" fontWeight="bold" fill="#181C23" fontFamily="Arial, sans-serif" letterSpacing="2" alignmentBaseline="middle" dominantBaseline="middle">na</text>
+    {/* Нижняя двойка (перевернутая) */}
+    <g transform="rotate(180 27 92)">
+      <text x="27" y="122" textAnchor="middle" fontSize="50" fontWeight="bold" fill="#7FC7A3" fontFamily="Arial, sans-serif">2</text>
+    </g>
+  </svg>
+);
+
 const App: React.FC = () => {
   const [projects, setProjects] = useState([
     {
       name: "Проект 1",
       date: "2025-06-15",
       tasks: [
-        { id: 1, title: "Задача 1", status: "new", description: "" },
-        { id: 2, title: "Задача 2", status: "in_progress", description: "" },
-        { id: 3, title: "Задача 3", status: "done", description: "" }
+        { id: 1, title: "Задача 1", status: "new", description: "", assignee: "" },
+        { id: 2, title: "Задача 2", status: "in_progress", description: "", assignee: "" },
+        { id: 3, title: "Задача 3", status: "done", description: "", assignee: "" }
       ],
       team: ["Петров Петр", "Иванов Иван"],
       comments: ["Комментарий 1", "Комментарий 2"]
@@ -40,7 +56,7 @@ const App: React.FC = () => {
       name: "Проект 2",
       date: "2025-06-20",
       tasks: [
-        { id: 4, title: "Задача 4", status: "new", description: "" }
+        { id: 4, title: "Задача 4", status: "new", description: "", assignee: "" }
       ],
       team: ["Романов Роман"],
       comments: []
@@ -60,6 +76,7 @@ const App: React.FC = () => {
   const [projectName, setProjectName] = useState("");
   const [statsModal, setStatsModal] = useState(false);
   const [statsTab, setStatsTab] = useState<"tasks" | "projects" | "time">("tasks");
+  const [statsProjectIdx, setStatsProjectIdx] = useState<number>(-1); // -1 = все проекты
   const [employeesModal, setEmployeesModal] = useState(false);
   const [employees, setEmployees] = useState(initialEmployees);
   const [employeeForm, setEmployeeForm] = useState(false);
@@ -79,20 +96,29 @@ const App: React.FC = () => {
   const [commentEditValue, setCommentEditValue] = useState("");
   const [newCommentValue, setNewCommentValue] = useState("");
 
+  // --- Chart.js Pie Chart Ref ---
+  const pieChartRef = useRef<HTMLCanvasElement | null>(null);
+  const pieChartInstance = useRef<Chart | null>(null);
+
   // Chart.js инициализация
   useEffect(() => {
     if (statsModal) {
       setTimeout(() => {
         if (statsTab === "projects") {
           const ctx = document.getElementById("projectsChart") as HTMLCanvasElement;
-          if (ctx && !ctx.dataset.rendered) {
-            new Chart(ctx, {
+          if (ctx) {
+            // Удаляем предыдущий график, если есть
+            if ((window as any).projectsChartInstance) {
+              (window as any).projectsChartInstance.destroy();
+            }
+            const pieData = getProjectStatsPieData();
+            (window as any).projectsChartInstance = new Chart(ctx, {
               type: "doughnut",
               data: {
-                labels: ["Активные", "Завершенные"],
+                labels: pieData.labels,
                 datasets: [{
-                  data: [75, 25],
-                  backgroundColor: ["#4CAF50", "#9E9E9E"],
+                  data: pieData.data,
+                  backgroundColor: pieData.colors,
                   borderWidth: 0
                 }]
               },
@@ -131,7 +157,115 @@ const App: React.FC = () => {
         }
       }, 100);
     }
-  }, [statsModal, statsTab]);
+    // Чистим график при закрытии окна
+    return () => {
+      if ((window as any).projectsChartInstance) {
+        (window as any).projectsChartInstance.destroy();
+        (window as any).projectsChartInstance = null;
+      }
+    };
+  }, [statsModal, statsTab, statsProjectIdx, projects]);
+
+  // Получение данных для круговой диаграммы по проекту или всем проектам
+  const getProjectStatsPieData = () => {
+    let tasks: any[] = [];
+    if (statsProjectIdx === -1) {
+      // все проекты
+      projects.forEach(p => tasks.push(...p.tasks));
+    } else if (projects[statsProjectIdx]) {
+      tasks = projects[statsProjectIdx].tasks;
+    }
+    const newCount = tasks.filter(t => t.status === "new" || t.status === "backlog" || t.status === "todo").length;
+    const inProgressCount = tasks.filter(t => t.status === "in_progress").length;
+    const doneCount = tasks.filter(t => t.status === "done").length;
+    return {
+      labels: ["Новые", "В работе", "Завершённые"],
+      data: [newCount, inProgressCount, doneCount],
+      colors: ["#bfe5c6", "#bfaee5", "#e5bfd2"]
+    };
+  };
+
+  // Chart.js Pie Chart Effect
+  useEffect(() => {
+    if (statsModal && statsTab === "projects" && pieChartRef.current) {
+      const pieData = getProjectStatsPieData();
+      // Удаляем предыдущий график
+      if (pieChartInstance.current) {
+        pieChartInstance.current.destroy();
+      }
+      pieChartInstance.current = new Chart(pieChartRef.current, {
+        type: "doughnut",
+        data: {
+          labels: pieData.labels,
+          datasets: [{
+            data: pieData.data,
+            backgroundColor: pieData.colors,
+            borderWidth: 0
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          cutout: "70%",
+          plugins: { legend: { position: "bottom" } }
+        }
+      });
+    }
+    // Чистим график при закрытии окна/смене вкладки
+    return () => {
+      if (pieChartInstance.current) {
+        pieChartInstance.current.destroy();
+        pieChartInstance.current = null;
+      }
+    };
+    // eslint-disable-next-line
+  }, [statsModal, statsTab, statsProjectIdx, projects]);
+
+  // --- ДОБАВИТЬ useEffect для круговой диаграммы справа ---
+  useEffect(() => {
+    if (statsModal) {
+      setTimeout(() => {
+        const ctx = document.getElementById("allProjectsPie") as HTMLCanvasElement;
+        if (ctx) {
+          // Удаляем предыдущий график, если есть
+          if ((window as any).allProjectsPieInstance) {
+            (window as any).allProjectsPieInstance.destroy();
+          }
+          // Собираем все задачи всех проектов
+          let allTasks: any[] = [];
+          projects.forEach(p => allTasks.push(...p.tasks));
+          const newCount = allTasks.filter(t => t.status === "new" || t.status === "backlog" || t.status === "todo").length;
+          const inProgressCount = allTasks.filter(t => t.status === "in_progress").length;
+          const doneCount = allTasks.filter(t => t.status === "done").length;
+          (window as any).allProjectsPieInstance = new Chart(ctx, {
+            type: "doughnut",
+            data: {
+              labels: ["Новые", "В работе", "Завершённые"],
+              datasets: [{
+                data: [newCount, inProgressCount, doneCount],
+                backgroundColor: ["#bfe5c6", "#bfaee5", "#e5bfd2"],
+                borderWidth: 0
+              }]
+            },
+            options: {
+              responsive: false,
+              maintainAspectRatio: false,
+              cutout: "70%",
+              plugins: { legend: { display: false } }
+            }
+          });
+          ctx.dataset.rendered = "true";
+        }
+      }, 100);
+    }
+    // Чистим график при закрытии окна
+    return () => {
+      if ((window as any).allProjectsPieInstance) {
+        (window as any).allProjectsPieInstance.destroy();
+        (window as any).allProjectsPieInstance = null;
+      }
+    };
+  }, [statsModal, projects]);
 
   // Добавление проекта
   const handleAddProject = () => {
@@ -247,8 +381,10 @@ const App: React.FC = () => {
         {/* Контент */}
         <div className="main-inner">
           {/* Шапка */}
-          <header className="header">
-            <div className="logo">2NA2S</div>
+          <header className="header app-header-rounded">
+            <div className="logo logo-svg">
+              <Logo2na2s />
+            </div>
             <div className="header-right">
               <span className="status">{status ? "Работаю" : "Отдыхаю"}</span>
               <i className="fa-regular fa-user account-icon" />
@@ -484,41 +620,66 @@ const App: React.FC = () => {
                 boxShadow: "0 2px 12px rgba(0,0,0,0.06)",
                 padding: 24,
                 minWidth: 280,
-                minHeight: 180,
+                minHeight: 220,
                 display: "flex",
                 flexDirection: "column",
                 alignItems: "flex-start"
               }}>
                 <div style={{fontWeight: 600, fontSize: 18, marginBottom: 12}}>Проекты</div>
-                <div style={{display: "flex", alignItems: "center", gap: 16}}>
-                  <div style={{width: 110, height: 110, position: "relative"}}>
-                    <canvas id="projectsChart" width={110} height={110}></canvas>
-                    {/* Можно добавить SVG-заглушку, если Chart.js не используется */}
+                {/* Выбор проекта */}
+                <select
+                  value={statsProjectIdx}
+                  onChange={e => setStatsProjectIdx(Number(e.target.value))}
+                  style={{
+                    marginBottom: 18,
+                    borderRadius: 8,
+                    padding: "6px 12px",
+                    fontSize: 16,
+                    border: "1px solid #ccc",
+                    background: "#fff",
+                    minWidth: 180
+                  }}
+                >
+                  <option value={-1}>Все проекты</option>
+                  {projects.map((p, idx) => (
+                    <option value={idx} key={idx}>{p.name}</option>
+                  ))}
+                </select>
+                <div style={{width: 110, height: 110, position: "relative", margin: "0 auto"}}>
+                  <canvas ref={pieChartRef} width={110} height={110} />
+                </div>
+                <div style={{display: "flex", flexDirection: "column", gap: 10, marginTop: 18}}>
+                  <div style={{display: "flex", alignItems: "center", gap: 8}}>
+                    <span style={{
+                      display: "inline-block",
+                      width: 18,
+                      height: 4,
+                      borderRadius: 2,
+                      background: "#bfe5c6"
+                    }}></span>
+                    <span style={{fontSize: 14, color: "#222"}}>новые задачи</span>
                   </div>
-                  <div style={{display: "flex", flexDirection: "column", gap: 10}}>
-                    <div style={{display: "flex", alignItems: "center", gap: 8}}>
-                      <span style={{
-                        display: "inline-block",
-                        width: 18,
-                        height: 4,
-                        borderRadius: 2,
-                        background: "#4CAF50"
-                      }}></span>
-                      <span style={{fontSize: 14, color: "#222"}}>активные проекты</span>
-                    </div>
-                    <div style={{display: "flex", alignItems: "center", gap: 8}}>
-                      <span style={{
-                        display: "inline-block",
-                        width: 18,
-                        height: 4,
-                        borderRadius: 2,
-                        background: "#bfaee5"
-                      }}></span>
-                      <span style={{fontSize: 14, color: "#222"}}>завершенные проекты</span>
-                    </div>
+                  <div style={{display: "flex", alignItems: "center", gap: 8}}>
+                    <span style={{
+                      display: "inline-block",
+                      width: 18,
+                      height: 4,
+                      borderRadius: 2,
+                      background: "#bfaee5"
+                    }}></span>
+                    <span style={{fontSize: 14, color: "#222"}}>в работе</span>
+                  </div>
+                  <div style={{display: "flex", alignItems: "center", gap: 8}}>
+                    <span style={{
+                      display: "inline-block",
+                      width: 18,
+                      height: 4,
+                      borderRadius: 2,
+                      background: "#e5bfd2"
+                    }}></span>
+                    <span style={{fontSize: 14, color: "#222"}}>завершённые</span>
                   </div>
                 </div>
-                <div style={{position: "absolute", top: 32, right: 32, fontSize: 15, color: "#888"}}>25%</div>
               </div>
               {/* Баги */}
               <div style={{
@@ -535,50 +696,41 @@ const App: React.FC = () => {
               </div>
             </div>
             {/* Правая часть */}
-            <div style={{flex: 1, display: "flex", flexDirection: "column", alignItems: "center"}}>
+            <div style={{flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center"}}>
               <div style={{fontSize: 28, fontWeight: 600, marginBottom: 24, letterSpacing: 1}}>СТАТИСТИКА</div>
-              <div style={{display: "flex", gap: 24}}>
-                {/* Активные задачи */}
-                <div style={{
-                  background: "#fff",
-                  borderRadius: 18,
-                  boxShadow: "0 2px 12px rgba(0,0,0,0.06)",
-                  padding: "18px 32px",
-                  minWidth: 180,
-                  minHeight: 220,
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center"
-                }}>
-                  <div style={{fontWeight: 600, fontSize: 17, marginBottom: 10}}>Активные задачи</div>
-                  <ul style={{listStyle: "none", padding: 0, margin: 0, fontSize: 16, color: "#222"}}>
-                    {[
-                      "задача 1", "задача 2", "задача 3", "задача 4", "задача 5", "задача 6", "задача 7", "задача 8", "задача 9"
-                    ].map((t, i) => (
-                      <li key={i} style={{marginBottom: 6}}>{t}</li>
-                    ))}
-                  </ul>
-                </div>
-                {/* Завершенные задачи */}
-                <div style={{
-                  background: "#e5e5e5",
-                  borderRadius: 18,
-                  boxShadow: "0 2px 12px rgba(0,0,0,0.06)",
-                  padding: "18px 32px",
-                  minWidth: 180,
-                  minHeight: 220,
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center"
-                }}>
-                  <div style={{fontWeight: 600, fontSize: 17, marginBottom: 10}}>Завершенные задачи</div>
-                  <ul style={{listStyle: "none", padding: 0, margin: 0, fontSize: 16, color: "#222"}}>
-                    {[
-                      "задача 11", "задача 12", "задача 13", "задача 14", "задача 15", "задача 16"
-                    ].map((t, i) => (
-                      <li key={i} style={{marginBottom: 6}}>{t}</li>
-                    ))}
-                  </ul>
+              {/* Круговая диаграмма по всем задачам всех проектов */}
+              <div style={{
+                width: 320,
+                height: 320,
+                background: "#fff",
+                borderRadius: 24,
+                boxShadow: "0 2px 12px rgba(0,0,0,0.06)",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: 24
+              }}>
+                <div style={{fontWeight: 600, fontSize: 20, marginBottom: 12}}>Соотношение задач</div>
+                <canvas
+                  id="allProjectsPie"
+                  width={220}
+                  height={220}
+                  style={{marginBottom: 16}}
+                />
+                <div style={{display: "flex", gap: 18, marginTop: 8}}>
+                  <div style={{display: "flex", alignItems: "center", gap: 6}}>
+                    <span style={{width: 16, height: 4, background: "#bfe5c6", borderRadius: 2, display: "inline-block"}}></span>
+                    <span style={{fontSize: 14, color: "#222"}}>новые</span>
+                  </div>
+                  <div style={{display: "flex", alignItems: "center", gap: 6}}>
+                    <span style={{width: 16, height: 4, background: "#bfaee5", borderRadius: 2, display: "inline-block"}}></span>
+                    <span style={{fontSize: 14, color: "#222"}}>в работе</span>
+                  </div>
+                  <div style={{display: "flex", alignItems: "center", gap: 6}}>
+                    <span style={{width: 16, height: 4, background: "#e5bfd2", borderRadius: 2, display: "inline-block"}}></span>
+                    <span style={{fontSize: 14, color: "#222"}}>завершённые</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -764,6 +916,32 @@ const App: React.FC = () => {
                               {task.description && (
                                 <div style={{fontSize: 13, color: "#666", marginTop: 2, whiteSpace: "pre-line"}}>{task.description}</div>
                               )}
+                              {/* Выпадающий список для назначения сотрудника */}
+                              <div style={{marginTop: 6}}>
+                                <select
+                                  value={task.assignee || ""}
+                                  onChange={e => {
+                                    const arr = [...projects];
+                                    arr[selectedProjectIdx].tasks = arr[selectedProjectIdx].tasks.map(t =>
+                                      t.id === task.id ? { ...t, assignee: e.target.value } : t
+                                    );
+                                    setProjects(arr);
+                                  }}
+                                  style={{
+                                    fontSize: 14,
+                                    borderRadius: 6,
+                                    padding: "4px 8px",
+                                    border: "1px solid #ccc",
+                                    marginTop: 2,
+                                    minWidth: 120
+                                  }}
+                                >
+                                  <option value="">— Назначить исполнителя —</option>
+                                  {projects[selectedProjectIdx].team.map((member, idx) => (
+                                    <option key={idx} value={member}>{member}</option>
+                                  ))}
+                                </select>
+                              </div>
                             </div>
                             <div style={{display: "flex", flexDirection: "column", gap: 4}}>
                               <button
@@ -840,7 +1018,8 @@ const App: React.FC = () => {
                                   id: Date.now(),
                                   title: taskEdit.value.trim(),
                                   description: taskEdit.description ?? "",
-                                  status: "new"
+                                  status: "new",
+                                  assignee: ""
                                 });
                                 setProjects(arr);
                                 setTaskEdit(null);
@@ -933,6 +1112,32 @@ const App: React.FC = () => {
                               {task.description && (
                                 <div style={{fontSize: 13, color: "#666", marginTop: 2, whiteSpace: "pre-line"}}>{task.description}</div>
                               )}
+                              {/* Выпадающий список для назначения сотрудника */}
+                              <div style={{marginTop: 6}}>
+                                <select
+                                  value={task.assignee || ""}
+                                  onChange={e => {
+                                    const arr = [...projects];
+                                    arr[selectedProjectIdx].tasks = arr[selectedProjectIdx].tasks.map(t =>
+                                      t.id === task.id ? { ...t, assignee: e.target.value } : t
+                                    );
+                                    setProjects(arr);
+                                  }}
+                                  style={{
+                                    fontSize: 14,
+                                    borderRadius: 6,
+                                    padding: "4px 8px",
+                                    border: "1px solid #ccc",
+                                    marginTop: 2,
+                                    minWidth: 120
+                                  }}
+                                >
+                                  <option value="">— Назначить исполнителя —</option>
+                                  {projects[selectedProjectIdx].team.map((member, idx) => (
+                                    <option key={idx} value={member}>{member}</option>
+                                  ))}
+                                </select>
+                              </div>
                             </div>
                             <div style={{display: "flex", flexDirection: "column", gap: 4}}>
                               <button
@@ -1009,7 +1214,8 @@ const App: React.FC = () => {
                                   id: Date.now(),
                                   title: taskEdit.value.trim(),
                                   description: taskEdit.description ?? "",
-                                  status: "in_progress"
+                                  status: "in_progress",
+                                  assignee: ""
                                 });
                                 setProjects(arr);
                                 setTaskEdit(null);
@@ -1102,6 +1308,32 @@ const App: React.FC = () => {
                               {task.description && (
                                 <div style={{fontSize: 13, color: "#666", marginTop: 2, whiteSpace: "pre-line"}}>{task.description}</div>
                               )}
+                              {/* Выпадающий список для назначения сотрудника */}
+                              <div style={{marginTop: 6}}>
+                                <select
+                                  value={task.assignee || ""}
+                                  onChange={e => {
+                                    const arr = [...projects];
+                                    arr[selectedProjectIdx].tasks = arr[selectedProjectIdx].tasks.map(t =>
+                                      t.id === task.id ? { ...t, assignee: e.target.value } : t
+                                    );
+                                    setProjects(arr);
+                                  }}
+                                  style={{
+                                    fontSize: 14,
+                                    borderRadius: 6,
+                                    padding: "4px 8px",
+                                    border: "1px solid #ccc",
+                                    marginTop: 2,
+                                    minWidth: 120
+                                  }}
+                                >
+                                  <option value="">— Назначить исполнителя —</option>
+                                  {projects[selectedProjectIdx].team.map((member, idx) => (
+                                    <option key={idx} value={member}>{member}</option>
+                                  ))}
+                                </select>
+                              </div>
                             </div>
                             <div style={{display: "flex", flexDirection: "column", gap: 4}}>
                               <button
@@ -1167,7 +1399,8 @@ const App: React.FC = () => {
                                   id: Date.now(),
                                   title: taskEdit.value.trim(),
                                   description: taskEdit.description ?? "",
-                                  status: "done"
+                                  status: "done",
+                                  assignee: ""
                                 });
                                 setProjects(arr);
                                 setTaskEdit(null);
