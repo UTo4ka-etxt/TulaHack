@@ -114,6 +114,15 @@ const App: React.FC = () => {
     avatar: "https://ui-avatars.com/api/?name=Петров+Петр&background=1976d2&color=fff&size=128"
   };
 
+  // Для хранения файлов задач и комментариев
+  const [taskFiles, setTaskFiles] = useState<{[taskId: number]: File[]}>({});
+  const [commentFiles, setCommentFiles] = useState<{[commentKey: string]: File[]}>({});
+  // Для новых файлов при добавлении задачи/комментария
+  const [newTaskFiles, setNewTaskFiles] = useState<File[]>([]);
+  const [newCommentFiles, setNewCommentFiles] = useState<File[]>([]);
+
+  const [highlightedTaskId, setHighlightedTaskId] = useState<number | null>(null);
+
   useEffect(() => {
     if (statsModal && bigPieChartRef.current) {
       const pieData = getProjectStatsPieData();
@@ -812,9 +821,24 @@ const App: React.FC = () => {
               {projects.filter(p => p.team.includes(currentUser.name)).length === 0 ? (
                 <div style={{color: "#888", fontSize: 15}}>Нет проектов</div>
               ) : (
-                projects.filter(p => p.team.includes(currentUser.name)).map((project, idx) => (
-                  <div key={idx} style={{marginBottom: 18}}>
-                    <div style={{fontWeight: 600, fontSize: 16, marginBottom: 4, color: "#1976d2"}}>
+                projects.filter(p => p.team.includes(currentUser.name)).map((project, pidx) => (
+                  <div key={pidx} style={{marginBottom: 18}}>
+                    <div
+                      style={{
+                        fontWeight: 600,
+                        fontSize: 16,
+                        marginBottom: 4,
+                        color: "#1976d2",
+                        cursor: "pointer",
+                        textDecoration: "underline"
+                      }}
+                      onClick={() => {
+                        setSelectedProjectIdx(projects.findIndex(p => p.name === project.name));
+                        setProfileModal(false);
+                        setHighlightedTaskId(null);
+                      }}
+                      title="Открыть проект"
+                    >
                       {project.name}
                     </div>
                     <ul style={{marginLeft: 0, paddingLeft: 18, fontSize: 15, color: "#222"}}>
@@ -822,7 +846,24 @@ const App: React.FC = () => {
                         <li style={{color: "#aaa"}}>Нет задач</li>
                       ) : (
                         project.tasks.filter(t => t.assignee === currentUser.name).map(t => (
-                          <li key={t.id}>
+                          <li
+                            key={t.id}
+                            style={{
+                              cursor: "pointer",
+                              textDecoration: "underline",
+                              color: "#1976d2",
+                              marginBottom: 2,
+                              borderRadius: 6,
+                              padding: "2px 4px",
+                              display: "inline-block"
+                            }}
+                            onClick={() => {
+                              setSelectedProjectIdx(projects.findIndex(p => p.name === project.name));
+                              setProfileModal(false);
+                              setTimeout(() => setHighlightedTaskId(t.id), 0);
+                            }}
+                            title="Открыть задачу в проекте"
+                          >
                             <span style={{fontWeight: 500}}>{t.title}</span>
                             {t.status === "done" && <span style={{color: "#4CAF50", marginLeft: 8}}>(готово)</span>}
                             {t.status === "in_progress" && <span style={{color: "#bfaee5", marginLeft: 8}}>(в работе)</span>}
@@ -841,7 +882,10 @@ const App: React.FC = () => {
 
       {/* Модальное окно выбранного проекта */}
       {selectedProjectIdx !== null && (
-        <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) setSelectedProjectIdx(null); }}>
+        <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) {
+          setSelectedProjectIdx(null);
+          setHighlightedTaskId(null); // сбросить подсветку при закрытии
+        }}}>
           <div
             className="project-board"
             style={{
@@ -909,7 +953,10 @@ const App: React.FC = () => {
               />
               <button
                 className="project-close-btn"
-                onClick={() => setSelectedProjectIdx(null)}
+                onClick={() => {
+                  setSelectedProjectIdx(null);
+                  setHighlightedTaskId(null); // сбросить подсветку при закрытии
+                }}
                 title="Закрыть"
                 style={{
                   fontSize: 28,
@@ -960,18 +1007,27 @@ const App: React.FC = () => {
                   <div style={{fontWeight: 600, fontSize: 18, marginBottom: 10}}>Новые задачи</div>
                   <div style={{flex: 1}}>
                     {projects[selectedProjectIdx].tasks.filter(t => t.status === "new").map(task => (
-                      <div key={task.id} style={{
-                        background: "#fff",
-                        borderRadius: 10,
-                        marginBottom: 10,
-                        padding: "10px 14px",
-                        fontSize: 16,
-                        boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                        minWidth: 0
-                      }}>
+                      <div
+                        key={task.id}
+                        style={{
+                          background: highlightedTaskId === task.id ? "#e0ffe0" : "#fff",
+                          border: highlightedTaskId === task.id ? "2px solid #1976d2" : "none",
+                          borderRadius: 10,
+                          marginBottom: 10,
+                          padding: "10px 14px",
+                          fontSize: 16,
+                          boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          minWidth: 0,
+                          transition: "background 0.2s, border 0.2s"
+                        }}
+                        onAnimationEnd={() => {
+                          // Сбросить подсветку после первого рендера, если нужно автоубирать
+                          // setHighlightedTaskId(null);
+                        }}
+                      >
                         {taskEdit && taskEdit.mode === "edit" && taskEdit.id === task.id ? (
                           <>
                             <div style={{flex: 1, marginRight: 8}}>
@@ -987,6 +1043,32 @@ const App: React.FC = () => {
                                 style={{width: "100%", fontSize: 15, borderRadius: 6, padding: 6, minHeight: 38}}
                                 placeholder="Описание задачи"
                               />
+                              {/* input для файлов */}
+                              <input
+                                type="file"
+                                multiple
+                                onChange={e => {
+                                  const files = e.target.files ? Array.from(e.target.files) : [];
+                                  setNewTaskFiles(files);
+                                }}
+                                style={{marginTop: 8}}
+                              />
+                              {/* Список прикреплённых файлов */}
+                              {(taskFiles[task.id] || []).map((file, idx) => (
+                                <div key={idx}>
+                                  <a href={URL.createObjectURL(file)} download={file.name}>{file.name}</a>
+                                </div>
+                              ))}
+                              {/* Новые файлы (ещё не сохранённые) */}
+                              {newTaskFiles.length > 0 && (
+                                <div>
+                                  {newTaskFiles.map((file, idx) => (
+                                    <div key={idx}>
+                                      <span>{file.name}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
                             </div>
                             <div style={{display: "flex", flexDirection: "column", gap: 4}}>
                               <button
@@ -1000,13 +1082,22 @@ const App: React.FC = () => {
                                       : t
                                   );
                                   setProjects(arr);
+                                  // Сохраняем новые файлы
+                                  setTaskFiles(prev => ({
+                                    ...prev,
+                                    [task.id]: [...(prev[task.id] || []), ...newTaskFiles]
+                                  }));
+                                  setNewTaskFiles([]);
                                   setTaskEdit(null);
                                 }}
                               >✔</button>
                               <button
                                 className="task-move-btn"
                                 title="Отмена"
-                                onClick={() => setTaskEdit(null)}
+                                onClick={() => {
+                                  setNewTaskFiles([]);
+                                  setTaskEdit(null);
+                                }}
                               >×</button>
                             </div>
                           </>
@@ -1044,6 +1135,17 @@ const App: React.FC = () => {
                                   ))}
                                 </select>
                               </div>
+                              {/* Список прикреплённых файлов */}
+                              {(taskFiles[task.id] || []).length > 0 && (
+                                <div style={{marginTop: 6}}>
+                                  <div style={{fontSize: 13, color: "#888"}}>Файлы:</div>
+                                  {(taskFiles[task.id] || []).map((file, idx) => (
+                                    <div key={idx}>
+                                      <a href={URL.createObjectURL(file)} download={file.name}>{file.name}</a>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
                             </div>
                             <div style={{display: "flex", flexDirection: "column", gap: 4}}>
                               <button
@@ -1108,6 +1210,26 @@ const App: React.FC = () => {
                             placeholder="Описание задачи"
                             style={{width: "100%", fontSize: 15, borderRadius: 6, padding: 6, minHeight: 38}}
                           />
+                          {/* input для файлов */}
+                          <input
+                            type="file"
+                            multiple
+                            onChange={e => {
+                              const files = e.target.files ? Array.from(e.target.files) : [];
+                              setNewTaskFiles(files);
+                            }}
+                            style={{marginTop: 8}}
+                          />
+                          {/* Список новых файлов */}
+                          {newTaskFiles.length > 0 && (
+                            <div>
+                              {newTaskFiles.map((file, idx) => (
+                                <div key={idx}>
+                                  <span>{file.name}</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
                         </div>
                         <div style={{display: "flex", flexDirection: "column", gap: 4}}>
                           <button
@@ -1116,14 +1238,21 @@ const App: React.FC = () => {
                             onClick={() => {
                               if (taskEdit.value.trim()) {
                                 const arr = [...projects];
+                                const newId = Date.now();
                                 arr[selectedProjectIdx].tasks.push({
-                                  id: Date.now(),
+                                  id: newId,
                                   title: taskEdit.value.trim(),
                                   description: taskEdit.description ?? "",
                                   status: "new",
                                   assignee: ""
                                 });
                                 setProjects(arr);
+                                // Сохраняем файлы
+                                setTaskFiles(prev => ({
+                                  ...prev,
+                                  [newId]: [...newTaskFiles]
+                                }));
+                                setNewTaskFiles([]);
                                 setTaskEdit(null);
                               }
                             }}
@@ -1131,7 +1260,10 @@ const App: React.FC = () => {
                           <button
                             className="task-move-btn"
                             title="Отмена"
-                            onClick={() => setTaskEdit(null)}
+                            onClick={() => {
+                              setNewTaskFiles([]);
+                              setTaskEdit(null);
+                            }}
                           >×</button>
                         </div>
                       </div>
@@ -1157,18 +1289,23 @@ const App: React.FC = () => {
                   <div style={{fontWeight: 600, fontSize: 18, marginBottom: 10}}>В работе</div>
                   <div style={{flex: 1}}>
                     {projects[selectedProjectIdx].tasks.filter(t => t.status === "in_progress").map(task => (
-                      <div key={task.id} style={{
-                        background: "#fff",
-                        borderRadius: 10,
-                        marginBottom: 10,
-                        padding: "10px 14px",
-                        fontSize: 16,
-                        boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                        minWidth: 0
-                      }}>
+                      <div
+                        key={task.id}
+                        style={{
+                          background: highlightedTaskId === task.id ? "#e0ffe0" : "#fff",
+                          border: highlightedTaskId === task.id ? "2px solid #1976d2" : "none",
+                          borderRadius: 10,
+                          marginBottom: 10,
+                          padding: "10px 14px",
+                          fontSize: 16,
+                          boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          minWidth: 0,
+                          transition: "background 0.2s, border 0.2s"
+                        }}
+                      >
                         {taskEdit && taskEdit.mode === "edit" && taskEdit.id === task.id ? (
                           <>
                             <div style={{flex: 1, marginRight: 8}}>
@@ -1184,6 +1321,32 @@ const App: React.FC = () => {
                                 style={{width: "100%", fontSize: 15, borderRadius: 6, padding: 6, minHeight: 38}}
                                 placeholder="Описание задачи"
                               />
+                              {/* input для файлов */}
+                              <input
+                                type="file"
+                                multiple
+                                onChange={e => {
+                                  const files = e.target.files ? Array.from(e.target.files) : [];
+                                  setNewTaskFiles(files);
+                                }}
+                                style={{marginTop: 8}}
+                              />
+                              {/* Список прикреплённых файлов */}
+                              {(taskFiles[task.id] || []).map((file, idx) => (
+                                <div key={idx}>
+                                  <a href={URL.createObjectURL(file)} download={file.name}>{file.name}</a>
+                                </div>
+                              ))}
+                              {/* Новые файлы (ещё не сохранённые) */}
+                              {newTaskFiles.length > 0 && (
+                                <div>
+                                  {newTaskFiles.map((file, idx) => (
+                                    <div key={idx}>
+                                      <span>{file.name}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
                             </div>
                             <div style={{display: "flex", flexDirection: "column", gap: 4}}>
                               <button
@@ -1197,13 +1360,22 @@ const App: React.FC = () => {
                                       : t
                                   );
                                   setProjects(arr);
+                                  // Сохраняем новые файлы
+                                  setTaskFiles(prev => ({
+                                    ...prev,
+                                    [task.id]: [...(prev[task.id] || []), ...newTaskFiles]
+                                  }));
+                                  setNewTaskFiles([]);
                                   setTaskEdit(null);
                                 }}
                               >✔</button>
                               <button
                                 className="task-move-btn"
                                 title="Отмена"
-                                onClick={() => setTaskEdit(null)}
+                                onClick={() => {
+                                  setNewTaskFiles([]);
+                                  setTaskEdit(null);
+                                }}
                               >×</button>
                             </div>
                           </>
@@ -1241,6 +1413,17 @@ const App: React.FC = () => {
                                   ))}
                                 </select>
                               </div>
+                              {/* Список прикреплённых файлов */}
+                              {(taskFiles[task.id] || []).length > 0 && (
+                                <div style={{marginTop: 6}}>
+                                  <div style={{fontSize: 13, color: "#888"}}>Файлы:</div>
+                                  {(taskFiles[task.id] || []).map((file, idx) => (
+                                    <div key={idx}>
+                                      <a href={URL.createObjectURL(file)} download={file.name}>{file.name}</a>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
                             </div>
                             <div style={{display: "flex", flexDirection: "column", gap: 4}}>
                               <button
@@ -1305,6 +1488,26 @@ const App: React.FC = () => {
                             placeholder="Описание задачи"
                             style={{width: "100%", fontSize: 15, borderRadius: 6, padding: 6, minHeight: 38}}
                           />
+                          {/* input для файлов */}
+                          <input
+                            type="file"
+                            multiple
+                            onChange={e => {
+                              const files = e.target.files ? Array.from(e.target.files) : [];
+                              setNewTaskFiles(files);
+                            }}
+                            style={{marginTop: 8}}
+                          />
+                          {/* Список новых файлов */}
+                          {newTaskFiles.length > 0 && (
+                            <div>
+                              {newTaskFiles.map((file, idx) => (
+                                <div key={idx}>
+                                  <span>{file.name}</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
                         </div>
                         <div style={{display: "flex", flexDirection: "column", gap: 4}}>
                           <button
@@ -1313,14 +1516,21 @@ const App: React.FC = () => {
                             onClick={() => {
                               if (taskEdit.value.trim()) {
                                 const arr = [...projects];
+                                const newId = Date.now();
                                 arr[selectedProjectIdx].tasks.push({
-                                  id: Date.now(),
+                                  id: newId,
                                   title: taskEdit.value.trim(),
                                   description: taskEdit.description ?? "",
                                   status: "in_progress",
                                   assignee: ""
                                 });
                                 setProjects(arr);
+                                // Сохраняем файлы
+                                setTaskFiles(prev => ({
+                                  ...prev,
+                                  [newId]: [...newTaskFiles]
+                                }));
+                                setNewTaskFiles([]);
                                 setTaskEdit(null);
                               }
                             }}
@@ -1328,7 +1538,10 @@ const App: React.FC = () => {
                           <button
                             className="task-move-btn"
                             title="Отмена"
-                            onClick={() => setTaskEdit(null)}
+                            onClick={() => {
+                              setNewTaskFiles([]);
+                              setTaskEdit(null);
+                            }}
                           >×</button>
                         </div>
                       </div>
@@ -1354,18 +1567,23 @@ const App: React.FC = () => {
                   <div style={{fontWeight: 600, fontSize: 18, marginBottom: 10}}>Готовое</div>
                   <div style={{flex: 1}}>
                     {projects[selectedProjectIdx].tasks.filter(t => t.status === "done").map(task => (
-                      <div key={task.id} style={{
-                        background: "#fff",
-                        borderRadius: 10,
-                        marginBottom: 10,
-                        padding: "10px 14px",
-                        fontSize: 16,
-                        boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                        minWidth: 0
-                      }}>
+                      <div
+                        key={task.id}
+                        style={{
+                          background: highlightedTaskId === task.id ? "#e0ffe0" : "#fff",
+                          border: highlightedTaskId === task.id ? "2px solid #1976d2" : "none",
+                          borderRadius: 10,
+                          marginBottom: 10,
+                          padding: "10px 14px",
+                          fontSize: 16,
+                          boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          minWidth: 0,
+                          transition: "background 0.2s, border 0.2s"
+                        }}
+                      >
                         {taskEdit && taskEdit.mode === "edit" && taskEdit.id === task.id ? (
                           <>
                             <div style={{flex: 1, marginRight: 8}}>
@@ -1381,6 +1599,32 @@ const App: React.FC = () => {
                                 style={{width: "100%", fontSize: 15, borderRadius: 6, padding: 6, minHeight: 38}}
                                 placeholder="Описание задачи"
                               />
+                              {/* input для файлов */}
+                              <input
+                                type="file"
+                                multiple
+                                onChange={e => {
+                                  const files = e.target.files ? Array.from(e.target.files) : [];
+                                  setNewTaskFiles(files);
+                                }}
+                                style={{marginTop: 8}}
+                              />
+                              {/* Список прикреплённых файлов */}
+                              {(taskFiles[task.id] || []).map((file, idx) => (
+                                <div key={idx}>
+                                  <a href={URL.createObjectURL(file)} download={file.name}>{file.name}</a>
+                                </div>
+                              ))}
+                              {/* Новые файлы (ещё не сохранённые) */}
+                              {newTaskFiles.length > 0 && (
+                                <div>
+                                  {newTaskFiles.map((file, idx) => (
+                                    <div key={idx}>
+                                      <span>{file.name}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
                             </div>
                             <div style={{display: "flex", flexDirection: "column", gap: 4}}>
                               <button
@@ -1394,13 +1638,22 @@ const App: React.FC = () => {
                                       : t
                                   );
                                   setProjects(arr);
+                                  // Сохраняем новые файлы
+                                  setTaskFiles(prev => ({
+                                    ...prev,
+                                    [task.id]: [...(prev[task.id] || []), ...newTaskFiles]
+                                  }));
+                                  setNewTaskFiles([]);
                                   setTaskEdit(null);
                                 }}
                               >✔</button>
                               <button
                                 className="task-move-btn"
                                 title="Отмена"
-                                onClick={() => setTaskEdit(null)}
+                                onClick={() => {
+                                  setNewTaskFiles([]);
+                                  setTaskEdit(null);
+                                }}
                               >×</button>
                             </div>
                           </>
@@ -1438,6 +1691,17 @@ const App: React.FC = () => {
                                   ))}
                                 </select>
                               </div>
+                              {/* Список прикреплённых файлов */}
+                              {(taskFiles[task.id] || []).length > 0 && (
+                                <div style={{marginTop: 6}}>
+                                  <div style={{fontSize: 13, color: "#888"}}>Файлы:</div>
+                                  {(taskFiles[task.id] || []).map((file, idx) => (
+                                    <div key={idx}>
+                                      <a href={URL.createObjectURL(file)} download={file.name}>{file.name}</a>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
                             </div>
                             <div style={{display: "flex", flexDirection: "column", gap: 4}}>
                               <button
@@ -1491,6 +1755,26 @@ const App: React.FC = () => {
                             placeholder="Описание задачи"
                             style={{width: "100%", fontSize: 15, borderRadius: 6, padding: 6, minHeight: 38}}
                           />
+                          {/* input для файлов */}
+                          <input
+                            type="file"
+                            multiple
+                            onChange={e => {
+                              const files = e.target.files ? Array.from(e.target.files) : [];
+                              setNewTaskFiles(files);
+                            }}
+                            style={{marginTop: 8}}
+                          />
+                          {/* Список новых файлов */}
+                          {newTaskFiles.length > 0 && (
+                            <div>
+                              {newTaskFiles.map((file, idx) => (
+                                <div key={idx}>
+                                  <span>{file.name}</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
                         </div>
                         <div style={{display: "flex", flexDirection: "column", gap: 4}}>
                           <button
@@ -1499,14 +1783,21 @@ const App: React.FC = () => {
                             onClick={() => {
                               if (taskEdit.value.trim()) {
                                 const arr = [...projects];
+                                const newId = Date.now();
                                 arr[selectedProjectIdx].tasks.push({
-                                  id: Date.now(),
+                                  id: newId,
                                   title: taskEdit.value.trim(),
                                   description: taskEdit.description ?? "",
                                   status: "done",
                                   assignee: ""
                                 });
                                 setProjects(arr);
+                                // Сохраняем файлы
+                                setTaskFiles(prev => ({
+                                  ...prev,
+                                  [newId]: [...newTaskFiles]
+                                }));
+                                setNewTaskFiles([]);
                                 setTaskEdit(null);
                               }
                             }}
@@ -1514,7 +1805,10 @@ const App: React.FC = () => {
                           <button
                             className="task-move-btn"
                             title="Отмена"
-                            onClick={() => setTaskEdit(null)}
+                            onClick={() => {
+                              setNewTaskFiles([]);
+                              setTaskEdit(null);
+                            }}
                           >×</button>
                         </div>
                       </div>
@@ -1599,6 +1893,30 @@ const App: React.FC = () => {
                               onChange={e => setCommentEditValue(e.target.value)}
                               style={{flex: 1, fontSize: 15, marginRight: 6}}
                             />
+                            {/* input для файлов */}
+                            <input
+                              type="file"
+                              multiple
+                              onChange={e => {
+                                const files = e.target.files ? Array.from(e.target.files) : [];
+                                setNewCommentFiles(files);
+                              }}
+                              style={{marginTop: 8}}
+                            />
+                            {/* Список новых файлов */}
+                            {newCommentFiles.length > 0 && (
+                              <div>
+                                {newCommentFiles.map((file, i) => (
+                                  <div key={i}>{file.name}</div>
+                                ))}
+                              </div>
+                            )}
+                            {/* Список прикреплённых файлов */}
+                            {(commentFiles[`${selectedProjectIdx}_${idx}`] || []).map((file, i) => (
+                              <div key={i}>
+                                <a href={URL.createObjectURL(file)} download={file.name}>{file.name}</a>
+                              </div>
+                            ))}
                             <button
                               style={{border: "none", background: "none", color: "#4CAF50", fontSize: 18, cursor: "pointer"}}
                               title="Сохранить"
@@ -1606,6 +1924,15 @@ const App: React.FC = () => {
                                 const arr = [...projects];
                                 arr[selectedProjectIdx].comments[idx] = commentEditValue;
                                 setProjects(arr);
+                                // Сохраняем новые файлы
+                                setCommentFiles(prev => ({
+                                  ...prev,
+                                  [`${selectedProjectIdx}_${idx}`]: [
+                                    ...(prev[`${selectedProjectIdx}_${idx}`] || []),
+                                    ...newCommentFiles
+                                  ]
+                                }));
+                                setNewCommentFiles([]);
                                 setCommentEditIdx(null);
                                 setCommentEditValue("");
                               }}
@@ -1613,12 +1940,25 @@ const App: React.FC = () => {
                             <button
                               style={{border: "none", background: "none", color: "#c00", fontSize: 18, cursor: "pointer"}}
                               title="Отмена"
-                              onClick={() => setCommentEditIdx(null)}
+                              onClick={() => {
+                                setNewCommentFiles([]);
+                                setCommentEditIdx(null);
+                              }}
                             >×</button>
                           </>
                         ) : (
                           <>
                             <span style={{flex: 1}}>{c}</span>
+                            {/* Список прикреплённых файлов */}
+                            {(commentFiles[`${selectedProjectIdx}_${idx}`] || []).length > 0 && (
+                              <div>
+                                {(commentFiles[`${selectedProjectIdx}_${idx}`] || []).map((file, i) => (
+                                  <div key={i}>
+                                    <a href={URL.createObjectURL(file)} download={file.name}>{file.name}</a>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
                             <button
                               style={{border: "none", background: "none", color: "#888", fontSize: 16, cursor: "pointer"}}
                               title="Редактировать"
@@ -1634,6 +1974,12 @@ const App: React.FC = () => {
                                 const arr = [...projects];
                                 arr[selectedProjectIdx].comments.splice(idx, 1);
                                 setProjects(arr);
+                                // Удаляем файлы комментария
+                                setCommentFiles(prev => {
+                                  const copy = {...prev};
+                                  delete copy[`${selectedProjectIdx}_${idx}`];
+                                  return copy;
+                                });
                               }}
                             >🗑️</button>
                           </>
@@ -1649,6 +1995,24 @@ const App: React.FC = () => {
                       placeholder="Добавить комментарий"
                       style={{flex: 1, fontSize: 15}}
                     />
+                    {/* input для файлов */}
+                    <input
+                      type="file"
+                      multiple
+                      onChange={e => {
+                        const files = e.target.files ? Array.from(e.target.files) : [];
+                        setNewCommentFiles(files);
+                      }}
+                      style={{marginTop: 8}}
+                    />
+                    {/* Список новых файлов */}
+                    {newCommentFiles.length > 0 && (
+                      <div>
+                        {newCommentFiles.map((file, i) => (
+                          <div key={i}>{file.name}</div>
+                        ))}
+                      </div>
+                    )}
                     <button
                       style={{border: "none", background: "none", color: "#4CAF50", fontSize: 18, cursor: "pointer"}}
                       title="Добавить"
@@ -1657,7 +2021,14 @@ const App: React.FC = () => {
                           const arr = [...projects];
                           arr[selectedProjectIdx].comments.push(newCommentValue.trim());
                           setProjects(arr);
+                          // Сохраняем файлы к новому комментарию
+                          const newIdx = arr[selectedProjectIdx].comments.length - 1;
+                          setCommentFiles(prev => ({
+                            ...prev,
+                            [`${selectedProjectIdx}_${newIdx}`]: [...newCommentFiles]
+                          }));
                           setNewCommentValue("");
+                          setNewCommentFiles([]);
                         }
                       }}
                     >+</button>
