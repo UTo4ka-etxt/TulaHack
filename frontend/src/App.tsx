@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useLayoutEffect } from "react";
 import "./styles/index.css";
 import Chart from "chart.js/auto";
 
@@ -14,7 +14,8 @@ const sidebarItems = [
   { icon: "fa-gear", label: "настройки" },
   { icon: "fa-diagram-project", label: "проекты" },
   { icon: "fa-chart-line", label: "статистика" },
-  { icon: "fa-id-card", label: "команда" }
+  { icon: "fa-id-card", label: "команда" },
+  { icon: "fa-file-lines", label: "отчеты" } // добавлено
 ];
 
 const initialEmployees = [
@@ -102,8 +103,6 @@ const App: React.FC = () => {
   // const pieChartInstance = useRef<Chart | null>(null);
 
   // --- Chart.js Pie Chart Effect для большого графика ---
-  const bigPieChartRef = useRef<HTMLCanvasElement | null>(null);
-  const bigPieChartInstance = useRef<Chart | null>(null);
 
   const [profileModal, setProfileModal] = useState(false);
 
@@ -123,112 +122,126 @@ const App: React.FC = () => {
 
   const [highlightedTaskId, setHighlightedTaskId] = useState<number | null>(null);
 
-  useEffect(() => {
-    if (statsModal && bigPieChartRef.current) {
-      const pieData = getProjectStatsPieData();
-      if (bigPieChartInstance.current) {
-        bigPieChartInstance.current.destroy();
-      }
-      bigPieChartInstance.current = new Chart(bigPieChartRef.current, {
-        type: "doughnut",
-        data: {
-          labels: pieData.labels,
-          datasets: [{
-            data: pieData.data,
-            backgroundColor: pieData.colors,
-            borderWidth: 0
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          cutout: "70%",
-          plugins: { legend: { position: "bottom" } }
-        }
-      });
-    }
-    return () => {
-      if (bigPieChartInstance.current) {
-        bigPieChartInstance.current.destroy();
-        bigPieChartInstance.current = null;
-      }
-    };
-  }, [statsModal, statsProjectIdx, projects]);
+  const [reportsModal, setReportsModal] = useState(false);
+  const [reportsTab, setReportsTab] = useState<"summary"|"tables"|"employeeTasks"|"columnTime">("summary");
+  const [reportType, setReportType] = useState<"projects"|"departments"|"people">("projects");
+  // Для динамических пользовательских колонок в отчете по проектам
+  const [customProjectColumns, setCustomProjectColumns] = useState<string[]>([]);
+  const [showAddColumnInput, setShowAddColumnInput] = useState(false);
+  const [newColumnName, setNewColumnName] = useState("");
 
-  // Chart.js инициализация
-  useEffect(() => {
-    if (statsModal) {
-      setTimeout(() => {
-        if (statsTab === "projects") {
-          const ctx = document.getElementById("projectsChart") as HTMLCanvasElement;
-          if (ctx) {
-            // Удаляем предыдущий график, если есть
-            if ((window as any).projectsChartInstance) {
-              (window as any).projectsChartInstance.destroy();
-            }
-            const pieData = getProjectStatsPieData();
-            (window as any).projectsChartInstance = new Chart(ctx, {
-              type: "doughnut",
-              data: {
-                labels: pieData.labels,
-                datasets: [{
-                  data: pieData.data,
-                  backgroundColor: pieData.colors,
-                  borderWidth: 0
-                }]
-              },
-              options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                cutout: "70%",
-                plugins: { legend: { position: "bottom" } }
-              }
-            });
-            ctx.dataset.rendered = "true";
-          }
+  const [activeTab, setActiveTab] = useState<null | "main" | "projects" | "stats" | "employees" | "reports">(null);
+
+  useLayoutEffect(() => {
+    if (activeTab === "stats" && statsTab === "projects") {
+      const ctx = document.getElementById("projectsChart") as HTMLCanvasElement | null;
+      if (ctx && ctx.offsetParent !== null) {
+        ctx.width = ctx.width; // очистка canvas
+        if ((window as any).projectsChartInstance) {
+          (window as any).projectsChartInstance.destroy();
         }
-        if (statsTab === "time") {
-          const ctx = document.getElementById("timeChart") as HTMLCanvasElement;
-          if (ctx && !ctx.dataset.rendered) {
-            new Chart(ctx, {
-              type: "bar",
-              data: {
-                labels: ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"],
-                datasets: [{
-                  label: "Часы",
-                  data: [6, 7, 8, 5, 6, 0, 0],
-                  backgroundColor: "#4CAF50",
-                  borderRadius: 4
-                }]
-              },
-              options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { display: false } }
-              }
-            });
-            ctx.dataset.rendered = "true";
+        const pieData = getProjectStatsPieData();
+        (window as any).projectsChartInstance = new Chart(ctx, {
+          type: "doughnut",
+          data: {
+            labels: pieData.labels,
+            datasets: [{
+              data: pieData.data,
+              backgroundColor: pieData.colors,
+              borderWidth: 0
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: "70%",
+            plugins: { legend: { position: "bottom" } }
           }
-        }
-      }, 100);
+        });
+        ctx.dataset.rendered = "true";
+      }
     }
-    // Чистим график при закрытии окна
     return () => {
       if ((window as any).projectsChartInstance) {
         (window as any).projectsChartInstance.destroy();
         (window as any).projectsChartInstance = null;
       }
     };
-  }, [statsModal, statsTab, statsProjectIdx, projects]);
+  }, [activeTab, statsTab, statsProjectIdx, projects]);
+
+  // Chart.js инициализация
+  // useEffect(() => {
+  //   if (statsModal) {
+  //     setTimeout(() => {
+  //       if (statsTab === "projects") {
+  //         const ctx = document.getElementById("projectsChart") as HTMLCanvasElement;
+  //         if (ctx) {
+  //           // Удаляем предыдущий график, если есть
+  //           if ((window as any).projectsChartInstance) {
+  //             (window as any).projectsChartInstance.destroy();
+  //           }
+  //           const pieData = getProjectStatsPieData();
+  //           (window as any).projectsChartInstance = new Chart(ctx, {
+  //             type: "doughnut",
+  //             data: {
+  //               labels: pieData.labels,
+  //               datasets: [{
+  //                 data: pieData.data,
+  //                 backgroundColor: pieData.colors,
+  //                 borderWidth: 0
+  //               }]
+  //             },
+  //             options: {
+  //               responsive: true,
+  //               maintainAspectRatio: false,
+  //               cutout: "70%",
+  //               plugins: { legend: { position: "bottom" } }
+  //             }
+  //           });
+  //           ctx.dataset.rendered = "true";
+  //         }
+  //       }
+  //       if (statsTab === "time") {
+  //         const ctx = document.getElementById("timeChart") as HTMLCanvasElement;
+  //         if (ctx && !ctx.dataset.rendered) {
+  //           new Chart(ctx, {
+  //             type: "bar",
+  //             data: {
+  //               labels: ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"],
+  //               datasets: [{
+  //                 label: "Часы",
+  //                 data: [6, 7, 8, 5, 6, 0, 0],
+  //                 backgroundColor: "#4CAF50",
+  //                 borderRadius: 4
+  //               }]
+  //             },
+  //             options: {
+  //               responsive: true,
+  //               maintainAspectRatio: false,
+  //               plugins: { legend: { display: false } }
+  //             }
+  //           });
+  //           ctx.dataset.rendered = "true";
+  //         }
+  //       }
+  //     }, 100);
+  //   }
+  //   // Чистим график при закрытии окна
+  //   return () => {
+  //     if ((window as any).projectsChartInstance) {
+  //       (window as any).projectsChartInstance.destroy();
+  //       (window as any).projectsChartInstance = null;
+  //     }
+  //   };
+  // }, [statsModal, statsTab, statsProjectIdx, projects]);
 
   // Получение данных для круговой диаграммы по проекту или всем проектам
   const getProjectStatsPieData = () => {
     let tasks: any[] = [];
     if (statsProjectIdx === -1) {
-      // все проекты
-      projects.forEach(p => tasks.push(...p.tasks));
+      projects.forEach(p => tasks.push(...(p.tasks || [])));
     } else if (projects[statsProjectIdx]) {
-      tasks = projects[statsProjectIdx].tasks;
+      tasks = projects[statsProjectIdx].tasks || [];
     }
     const newCount = tasks.filter(t => t.status === "new" || t.status === "backlog" || t.status === "todo").length;
     const inProgressCount = tasks.filter(t => t.status === "in_progress").length;
@@ -375,413 +388,707 @@ const App: React.FC = () => {
     }, 400); // 400мс для плавности
   };
 
+  // Функция для скачивания отчета (заглушка)
+  const handleDownloadReport = () => {
+    // Здесь можно реализовать генерацию и скачивание отчета (например, CSV, PDF)
+    // Пока просто создаем текстовый файл-заглушку
+    const content = `Отчет (${reportType === "projects" ? "по проектам" : reportType === "departments" ? "по отделам" : "по людям"})`;
+    const blob = new Blob([content], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `report-${reportType}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <>
       <FontAwesomeLink />
       <div className="main-bg">
         {/* Сайдбар */}
         <aside className="sidebar">
-          {sidebarItems.map((item, idx) => (
-            <div
-              className="sidebar-item"
-              key={idx}
-              onClick={() => {
-                if (item.label === "проекты") setProjectsModal(true);
-                else if (item.label === "статистика") setStatsModal(true);
-                else if (item.label === "команда") setEmployeesModal(true);
-              }}
-            >
-              <i className={`fa-solid ${item.icon} sidebar-icon`} />
-              <span className="sidebar-text">{item.label}</span>
-            </div>
-          ))}
+          <div
+            className="sidebar-item"
+            onClick={() => setActiveTab("main")}
+          >
+            <i className="fa-solid fa-house sidebar-icon" />
+            <span className="sidebar-text">главная</span>
+          </div>
+          <div
+            className="sidebar-item"
+            onClick={() => setActiveTab("projects")}
+          >
+            <i className="fa-solid fa-diagram-project sidebar-icon" />
+            <span className="sidebar-text">проекты</span>
+          </div>
+          <div
+            className="sidebar-item"
+            onClick={() => setActiveTab("stats")}
+          >
+            <i className="fa-solid fa-chart-line sidebar-icon" />
+            <span className="sidebar-text">статистика</span>
+          </div>
+          <div
+            className="sidebar-item"
+            onClick={() => setActiveTab("employees")}
+          >
+            <i className="fa-solid fa-id-card sidebar-icon" />
+            <span className="sidebar-text">команда</span>
+          </div>
+          <div
+            className="sidebar-item"
+            onClick={() => setActiveTab("reports")}
+          >
+            <i className="fa-solid fa-file-lines sidebar-icon" />
+            <span className="sidebar-text">отчеты</span>
+          </div>
         </aside>
 
-        {/* Контент */}
-        <div className="main-inner">
-          {/* Шапка */}
-          <header className="header app-header-rounded">
-            <div className="logo logo-svg">
-              <Logo2na2s />
-            </div>
-            <div className="header-right">
-              <span
-                className="status"
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  backgroundColor: "#f0f0f0",
-                  borderRadius: 20,
-                  padding: "5px 15px",
-                  cursor: "pointer",
-                  userSelect: "none"
-                }}
-                onClick={() => setStatus(s => !s)}
-                title="Сменить статус"
-              >
-                <span
-                  style={{
-                    display: "inline-block",
-                    width: 12,
-                    height: 12,
-                    borderRadius: "50%",
-                    marginRight: 8,
-                    background: status ? "#1976d2" : "#ff9800",
-                    boxShadow: status
-                      ? "0 0 0 4px rgba(25,118,210,0.15)"
-                      : "0 0 0 4px rgba(255,152,0,0.15)",
-                    transition: "background 0.2s, box-shadow 0.2s"
-                  }}
-                />
-                {status ? "Работаю" : "Отдыхаю"}
-              </span>
-              <i
-                className="fa-regular fa-user account-icon"
-                style={{ cursor: "pointer" }}
-                title="Профиль"
-                onClick={() => setProfileModal(true)}
-              />
-              <i className="fa-regular fa-bell notifications" />
-            </div>
-          </header>
-
-          {/* Заголовок */}
-          <h1 className="main-title">ЗАДАЧИ</h1>
-
-          {/* Проекты */}
-          <div className="projects-row" style={{display: "flex", flexDirection: "row", gap: 36, marginBottom: 32}}>
-            {projects.map((project, idx) => (
-              <div
-                key={idx}
-                className={`project-pill${activeProject === idx ? " active" : ""}`}
-                onClick={() => setSelectedProjectIdx(idx)}
-                style={{
-                  minWidth: 340,
-                  maxWidth: 420,
-                  minHeight: 80,
-                  background: idx === 0 ? "#bfe5c6" : idx === 1 ? "#ffe0a3" : idx === 2 ? "#ffffb5" : "#f3f3f3",
-                  color: activeProject === idx ? "#fff" : "#222",
-                  boxShadow: activeProject === idx ? "0 4px 18px rgba(0,0,0,0.12)" : "0 2px 8px rgba(0,0,0,0.08)",
-                  fontWeight: activeProject === idx ? 600 : 500,
-                  border: "none",
-                  position: "relative",
-                  cursor: "pointer",
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  justifyContent: "flex-start",
-                  transition: "box-shadow 0.2s, background 0.2s"
-                }}
-              >
-                <div style={{
-                  width: "100%",
-                  textAlign: "center",
-                  fontWeight: 600,
-                  fontSize: 22,
-                  marginBottom: 12,
-                  borderRadius: 18,
-                  background: "rgba(0,0,0,0.06)",
-                  padding: "8px 0"
-                }}>
-                  {project.name}
+        <div className="main-inner" style={{display: "flex", justifyContent: "center", alignItems: "center", minHeight: "100vh"}}>
+          {/* Главная страница */}
+          {(!activeTab || activeTab === "main") && (
+            <div style={{width: 1200, minHeight: 700, background: "#fff", borderRadius: 32, boxShadow: "0 8px 32px rgba(0,0,0,0.10)", padding: 48, margin: "40px auto"}}>
+              {/* ...главная страница, как раньше... */}
+              {/* Шапка, проекты, и т.д. */}
+              <header className="header app-header-rounded">
+                <div className="logo logo-svg">
+                  <Logo2na2s />
                 </div>
-                {/* Список активных задач под проектом (всегда отображается) */}
-                <div style={{
-                  width: "98%",
-                  minHeight: 140,
-                  background: "transparent",
-                  borderRadius: 16,
-                  padding: "10px 0 10px 0",
-                  fontSize: 17,
-                  color: "#222",
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center"
-                }}>
-                  {project.tasks.filter(t => t.status === "in_progress").length > 0 ? (
-                    <ul style={{listStyle: "none", padding: 0, margin: 0, width: "100%"}}>
-                      {project.tasks.filter(t => t.status === "in_progress").map(t => (
-                        <li
-                          key={t.id}
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "space-between",
-                            marginBottom: 12,
-                            background: "#f6fcff",
-                            borderRadius: 12,
-                            padding: "12px 18px",
-                            width: "100%",
-                            fontSize: 17
-                          }}
-                        >
-                          <span style={{fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap"}}>{t.title}</span>
-                          <span style={{marginLeft: 18, color: "#888", fontSize: 15, flexShrink: 0}}>
-                            {t.assignee || "—"}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <div style={{color: "#bbb", fontSize: 16, width: "100%", textAlign: "center"}}>Нет задач в работе</div>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Удалить старый блок tasks-columns-row */}
-        </div>
-      </div>
-
-      {/* Модальное окно проектов */}
-      {projectsModal && (
-        <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) setProjectsModal(false); }}>
-          <div className="modal modal-projects">
-            <h1 className="modal-title">ПРОЕКТЫ</h1>
-            <div className="modal-list">
-              {projects.map((project, idx) => (
-                <div
-                  key={idx}
-                  className="modal-list-item"
-                  style={{display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8}}
-                >
+                <div className="header-right">
                   <span
-                    style={{flex: 1, cursor: "pointer"}}
-                    onClick={() => {
-                      setSelectedProjectIdx(idx);
-                      setProjectsModal(false);
-                    }}
-                  >
-                    {project.name}
-                  </span>
-                  <button
+                    className="status"
                     style={{
-                      background: "none",
-                      border: "none",
-                      color: "#c00",
-                      fontSize: 18,
+                      display: "flex",
+                      alignItems: "center",
+                      backgroundColor: "#f0f0f0",
+                      borderRadius: 20,
+                      padding: "5px 15px",
                       cursor: "pointer",
-                      marginLeft: 8
+                      userSelect: "none"
                     }}
-                    title="Удалить проект"
-                    onClick={() => handleDeleteProject(idx)}
+                    onClick={() => setStatus(s => !s)}
+                    title="Сменить статус"
                   >
-                    <i className="fa-solid fa-trash"></i>
-                  </button>
+                    <span
+                      style={{
+                        display: "inline-block",
+                        width: 12,
+                        height: 12,
+                        borderRadius: "50%",
+                        marginRight: 8,
+                        background: status ? "#1976d2" : "#ff9800",
+                        boxShadow: status
+                          ? "0 0 0 4px rgba(25,118,210,0.15)"
+                          : "0 0 0 4px rgba(255,152,0,0.15)",
+                        transition: "background 0.2s, box-shadow 0.2s"
+                      }}
+                    />
+                    {status ? "Работаю" : "Отдыхаю"}
+                  </span>
+                  <i
+                    className="fa-regular fa-user account-icon"
+                    style={{ cursor: "pointer" }}
+                    title="Профиль"
+                    onClick={() => setProfileModal(true)}
+                  />
+                  <i className="fa-regular fa-bell notifications" />
                 </div>
-              ))}
-              <button className="modal-list-item add" onClick={() => setProjectForm(true)}>
-                <i className="fa-solid fa-plus"></i> Новый проект
-              </button>
-            </div>
-            {projectForm && (
-              <div className="modal-form">
-                <input
-                  value={projectName}
-                  onChange={e => setProjectName(e.target.value)}
-                  placeholder="Название проекта"
-                />
-                <button onClick={handleAddProject}>Добавить</button>
-                <button onClick={() => setProjectForm(false)}>Отмена</button>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+              </header>
 
-      {/* Модальное окно сотрудников */}
-      {employeesModal && (
-        <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) setEmployeesModal(false); }}>
-          <div className="modal modal-employees">
-            <h1 className="modal-title">СОТРУДНИКИ</h1>
-            <div className="modal-list">
-              {employees.map((emp, idx) => (
-                <div className="modal-list-item employee" key={idx}>
-                  <span className="employee-avatar"></span>
-                  <span className="employee-name">{emp.name}</span>
-                  <span className="employee-role">({emp.role})</span>
-                  <button
-                    className="employee-edit"
-                    onClick={() => handleEditEmployee(idx)}
-                    title="Редактировать"
-                  >✏️</button>
-                  <button
-                    className="employee-delete"
-                    onClick={() => handleDeleteEmployee(idx)}
-                    title="Удалить"
-                  >🗑️</button>
-                </div>
-              ))}
-              <button className="modal-list-item add" onClick={() => setEmployeeForm(true)}>
-                <span className="employee-add-plus">+</span> Добавить сотрудника
-              </button>
-              {employeeForm && (
+              {/* Заголовок */}
+              <h1 className="main-title">ЗАДАЧИ</h1>
+
+              {/* Проекты */}
+              <div className="projects-row" style={{display: "flex", flexDirection: "row", gap: 36, marginBottom: 32}}>
+                {projects.map((project, idx) => (
+                  <div
+                    key={idx}
+                    className={`project-pill${activeProject === idx ? " active" : ""}`}
+                    onClick={() => setSelectedProjectIdx(idx)}
+                    style={{
+                      minWidth: 340,
+                      maxWidth: 420,
+                      minHeight: 80,
+                      background: idx === 0 ? "#bfe5c6" : idx === 1 ? "#ffe0a3" : idx === 2 ? "#ffffb5" : "#f3f3f3",
+                      color: activeProject === idx ? "#fff" : "#222",
+                      boxShadow: activeProject === idx ? "0 4px 18px rgba(0,0,0,0.12)" : "0 2px 8px rgba(0,0,0,0.08)",
+                      fontWeight: activeProject === idx ? 600 : 500,
+                      border: "none",
+                      position: "relative",
+                      cursor: "pointer",
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      justifyContent: "flex-start",
+                      transition: "box-shadow 0.2s, background 0.2s"
+                    }}
+                  >
+                    <div style={{
+                      width: "100%",
+                      textAlign: "center",
+                      fontWeight: 600,
+                      fontSize: 22,
+                      marginBottom: 12,
+                      borderRadius: 18,
+                      background: "rgba(0,0,0,0.06)",
+                      padding: "8px 0"
+                    }}>
+                      {project.name}
+                    </div>
+                    {/* Список активных задач под проектом (всегда отображается) */}
+                    <div style={{
+                      width: "98%",
+                      minHeight: 140,
+                      background: "transparent",
+                      borderRadius: 16,
+                      padding: "10px 0 10px 0",
+                      fontSize: 17,
+                      color: "#222",
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center"
+                    }}>
+                      {project.tasks.filter(t => t.status === "in_progress").length > 0 ? (
+                        <ul style={{listStyle: "none", padding: 0, margin: 0, width: "100%"}}>
+                          {project.tasks.filter(t => t.status === "in_progress").map(t => (
+                            <li
+                              key={t.id}
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "space-between",
+                                marginBottom: 12,
+                                background: "#f6fcff",
+                                borderRadius: 12,
+                                padding: "12px 18px",
+                                width: "100%",
+                                fontSize: 17
+                              }}
+                            >
+                              <span style={{fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap"}}>{t.title}</span>
+                              <span style={{marginLeft: 18, color: "#888", fontSize: 15, flexShrink: 0}}>
+                                {t.assignee || "—"}
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <div style={{color: "#bbb", fontSize: 16, width: "100%", textAlign: "center"}}>Нет задач в работе</div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Удалить старый блок tasks-columns-row */}
+            </div>
+          )}
+
+          {/* Страница проектов */}
+          {activeTab === "projects" && (
+            <div style={{width: 900, minHeight: 600, background: "#fff", borderRadius: 32, boxShadow: "0 8px 32px rgba(0,0,0,0.10)", padding: 48, margin: "40px auto"}}>
+              {/* ...контент страницы проектов (можно вынести из модального окна проектов)... */}
+              {/* Например, список проектов, добавление, удаление и т.д. */}
+              <h1 className="modal-title">ПРОЕКТЫ</h1>
+              <div className="modal-list">
+                {projects.map((project, idx) => (
+                  <div
+                    key={idx}
+                    className="modal-list-item"
+                    style={{display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8}}
+                  >
+                    <span
+                      style={{flex: 1, cursor: "pointer"}}
+                      onClick={() => {
+                        setSelectedProjectIdx(idx);
+                        setProjectsModal(false);
+                      }}
+                    >
+                      {project.name}
+                    </span>
+                    <button
+                      style={{
+                        background: "none",
+                        border: "none",
+                        color: "#c00",
+                        fontSize: 18,
+                        cursor: "pointer",
+                        marginLeft: 8
+                      }}
+                      title="Удалить проект"
+                      onClick={() => handleDeleteProject(idx)}
+                    >
+                      <i className="fa-solid fa-trash"></i>
+                    </button>
+                  </div>
+                ))}
+                <button className="modal-list-item add" onClick={() => setProjectForm(true)}>
+                  <i className="fa-solid fa-plus"></i> Новый проект
+                </button>
+              </div>
+              {projectForm && (
                 <div className="modal-form">
                   <input
-                    value={employeeName}
-                    onChange={e => setEmployeeName(e.target.value)}
-                    placeholder="Имя"
+                    value={projectName}
+                    onChange={e => setProjectName(e.target.value)}
+                    placeholder="Название проекта"
                   />
-                  <input
-                    value={employeeRole}
-                    onChange={e => setEmployeeRole(e.target.value)}
-                    placeholder="Должность"
-                  />
-                  <button onClick={handleSaveEmployee}>Сохранить</button>
-                  <button onClick={() => setEmployeeForm(false)}>Отмена</button>
+                  <button onClick={handleAddProject}>Добавить</button>
+                  <button onClick={() => setProjectForm(false)}>Отмена</button>
                 </div>
               )}
             </div>
-          </div>
-        </div>
-      )}
+          )}
 
-      {/* Модальное окно статистики */}
-      {statsModal && (
-        <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) setStatsModal(false); }}>
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "row",
-              background: "rgba(255,255,255,0.85)",
-              borderRadius: 24,
-              boxShadow: "0 8px 32px rgba(0,0,0,0.10)",
-              minWidth: 900,
-              minHeight: 540,
-              padding: 36,
-              gap: 36,
-              alignItems: "flex-start"
-            }}
-          >
-            {/* Левая часть */}
-            <div style={{display: "flex", flexDirection: "column", gap: 32, minWidth: 320}}>
-              {/* Проекты */}
-              <div style={{
-                background: "#f8faff",
-                borderRadius: 18,
-                boxShadow: "0 2px 12px rgba(0,0,0,0.06)",
-                padding: 24,
-                minWidth: 280,
-                minHeight: 220,
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "flex-start"
-              }}>
-                <div style={{fontWeight: 600, fontSize: 18, marginBottom: 12}}>Проекты</div>
-                {/* Выбор проекта */}
-                <select
-                  value={statsProjectIdx}
-                  onChange={e => setStatsProjectIdx(Number(e.target.value))}
-                  style={{
-                    marginBottom: 18,
-                    borderRadius: 8,
-                    padding: "6px 12px",
-                    fontSize: 16,
-                    border: "1px solid #ccc",
+          {/* Страница статистики */}
+          {activeTab === "stats" && (
+            <div style={{width: 1200, minHeight: 700, background: "#fff", borderRadius: 32, boxShadow: "0 8px 32px rgba(0,0,0,0.10)", padding: 48, margin: "40px auto"}}>
+              {/* ...контент страницы статистики (можно вынести из statsModal)... */}
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "row",
+                  background: "rgba(255,255,255,0.85)",
+                  borderRadius: 24,
+                  boxShadow: "0 8px 32px rgba(0,0,0,0.10)",
+                  minWidth: 900,
+                  minHeight: 540,
+                  padding: 36,
+                  gap: 36,
+                  alignItems: "flex-start"
+                }}
+              >
+                {/* Левая часть */}
+                <div style={{display: "flex", flexDirection: "column", gap: 32, minWidth: 320}}>
+                  {/* Проекты */}
+                  <div style={{
+                    background: "#f8faff",
+                    borderRadius: 18,
+                    boxShadow: "0 2px 12px rgba(0,0,0,0.06)",
+                    padding: 24,
+                    minWidth: 280,
+                    minHeight: 220,
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "flex-start"
+                  }}>
+                    <div style={{fontWeight: 600, fontSize: 18, marginBottom: 12}}>Проекты</div>
+                    {/* Выбор проекта */}
+                    <select
+                      value={statsProjectIdx}
+                      onChange={e => setStatsProjectIdx(Number(e.target.value))}
+                      style={{
+                        marginBottom: 18,
+                        borderRadius: 8,
+                        padding: "6px 12px",
+                        fontSize: 16,
+                        border: "1px solid #ccc",
+                        background: "#fff",
+                        minWidth: 180
+                      }}
+                    >
+                      <option value={-1}>Все проекты</option>
+                      {projects.map((p, idx) => (
+                        <option value={idx} key={idx}>{p.name}</option>
+                      ))}
+                    </select>
+                    {/* Удалить маленький график */}
+                    {/* <div style={{width: 110, height: 110, position: "relative", margin: "0 auto"}}>
+                      <canvas ref={pieChartRef} width={110} height={110} />
+                    </div> */}
+                    <div style={{display: "flex", flexDirection: "column", gap: 10, marginTop: 18}}>
+                      <div style={{display: "flex", alignItems: "center", gap: 8}}>
+                        <span style={{
+                          display: "inline-block",
+                          width: 18,
+                          height: 4,
+                          borderRadius: 2,
+                          background: "#bfe5c6"
+                        }}></span>
+                        <span style={{fontSize: 14, color: "#222"}}>новые задачи</span>
+                      </div>
+                      <div style={{display: "flex", alignItems: "center", gap: 8}}>
+                        <span style={{
+                          display: "inline-block",
+                          width: 18,
+                          height: 4,
+                          borderRadius: 2,
+                          background: "#bfaee5"
+                        }}></span>
+                        <span style={{fontSize: 14, color: "#222"}}>в работе</span>
+                      </div>
+                      <div style={{display: "flex", alignItems: "center", gap: 8}}>
+                        <span style={{
+                          display: "inline-block",
+                          width: 18,
+                          height: 4,
+                          borderRadius: 2,
+                          background: "#e5bfd2"
+                        }}></span>
+                        <span style={{fontSize: 14, color: "#222"}}>завершённые</span>
+                      </div>
+                    </div>
+                  </div>
+                  {/* Баги */}
+                  <div style={{
+                    background: "#f8faff",
+                    borderRadius: 18,
+                    boxShadow: "0 2px 12px rgba(0,0,0,0.06)",
+                    padding: 24,
+                    minWidth: 280,
+                    minHeight: 120,
+                    fontSize: 18,
+                    color: "#888"
+                  }}>
+                    Баги
+                  </div>
+                </div>
+                {/* Правая часть */}
+                <div style={{flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center"}}>
+                  <div style={{fontSize: 28, fontWeight: 600, marginBottom: 24, letterSpacing: 1}}>СТАТИСТИКА</div>
+                  {/* Большая круговая диаграмма, которая меняется при выборе проекта */}
+                  <div style={{
+                    width: 320,
+                    height: 320,
                     background: "#fff",
-                    minWidth: 180
-                  }}
-                >
-                  <option value={-1}>Все проекты</option>
-                  {projects.map((p, idx) => (
-                    <option value={idx} key={idx}>{p.name}</option>
-                  ))}
-                </select>
-                {/* Удалить маленький график */}
-                {/* <div style={{width: 110, height: 110, position: "relative", margin: "0 auto"}}>
-                  <canvas ref={pieChartRef} width={110} height={110} />
-                </div> */}
-                <div style={{display: "flex", flexDirection: "column", gap: 10, marginTop: 18}}>
-                  <div style={{display: "flex", alignItems: "center", gap: 8}}>
-                    <span style={{
-                      display: "inline-block",
-                      width: 18,
-                      height: 4,
-                      borderRadius: 2,
-                      background: "#bfe5c6"
-                    }}></span>
-                    <span style={{fontSize: 14, color: "#222"}}>новые задачи</span>
-                  </div>
-                  <div style={{display: "flex", alignItems: "center", gap: 8}}>
-                    <span style={{
-                      display: "inline-block",
-                      width: 18,
-                      height: 4,
-                      borderRadius: 2,
-                      background: "#bfaee5"
-                    }}></span>
-                    <span style={{fontSize: 14, color: "#222"}}>в работе</span>
-                  </div>
-                  <div style={{display: "flex", alignItems: "center", gap: 8}}>
-                    <span style={{
-                      display: "inline-block",
-                      width: 18,
-                      height: 4,
-                      borderRadius: 2,
-                      background: "#e5bfd2"
-                    }}></span>
-                    <span style={{fontSize: 14, color: "#222"}}>завершённые</span>
-                  </div>
-                </div>
-              </div>
-              {/* Баги */}
-              <div style={{
-                background: "#f8faff",
-                borderRadius: 18,
-                boxShadow: "0 2px 12px rgba(0,0,0,0.06)",
-                padding: 24,
-                minWidth: 280,
-                minHeight: 120,
-                fontSize: 18,
-                color: "#888"
-              }}>
-                Баги
-              </div>
-            </div>
-            {/* Правая часть */}
-            <div style={{flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center"}}>
-              <div style={{fontSize: 28, fontWeight: 600, marginBottom: 24, letterSpacing: 1}}>СТАТИСТИКА</div>
-              {/* Большая круговая диаграмма, которая меняется при выборе проекта */}
-              <div style={{
-                width: 320,
-                height: 320,
-                background: "#fff",
-                borderRadius: 24,
-                boxShadow: "0 2px 12px rgba(0,0,0,0.06)",
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                justifyContent: "center",
-                padding: 24
-              }}>
-                <div style={{fontWeight: 600, fontSize: 20, marginBottom: 12}}>Соотношение задач</div>
-                <canvas
-                  ref={bigPieChartRef}
-                  width={220}
-                  height={220}
-                  style={{marginBottom: 16}}
-                />
-                <div style={{display: "flex", gap: 18, marginTop: 8}}>
-                  <div style={{display: "flex", alignItems: "center", gap: 6}}>
-                    <span style={{width: 16, height: 4, background: "#bfe5c6", borderRadius: 2, display: "inline-block"}}></span>
-                    <span style={{fontSize: 14, color: "#222"}}>новые</span>
-                  </div>
-                  <div style={{display: "flex", alignItems: "center", gap: 6}}>
-                    <span style={{width: 16, height: 4, background: "#bfaee5", borderRadius: 2, display: "inline-block"}}></span>
-                    <span style={{fontSize: 14, color: "#222"}}>в работе</span>
-                  </div>
-                  <div style={{display: "flex", alignItems: "center", gap: 6}}>
-                    <span style={{width: 16, height: 4, background: "#e5bfd2", borderRadius: 2, display: "inline-block"}}></span>
-                    <span style={{fontSize: 14, color: "#222"}}>завершённые</span>
+                    borderRadius: 24,
+                    boxShadow: "0 2px 12px rgba(0,0,0,0.06)",
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    padding: 24
+                  }}>
+                    <div style={{fontWeight: 600, fontSize: 20, marginBottom: 12}}>Соотношение задач</div>
+                    <canvas
+                      id="projectsChart"
+                      key={`projectsChart-${statsProjectIdx}-${projects[statsProjectIdx]?.tasks?.length ?? projects.reduce((acc, p) => acc + (p.tasks?.length || 0), 0)}`}
+                      width={220}
+                      height={220}
+                      style={{marginBottom: 16}}
+                    />
+                    <div style={{display: "flex", gap: 18, marginTop: 8}}>
+                      <div style={{display: "flex", alignItems: "center", gap: 6}}>
+                        <span style={{width: 16, height: 4, background: "#bfe5c6", borderRadius: 2, display: "inline-block"}}></span>
+                        <span style={{fontSize: 14, color: "#222"}}>новые</span>
+                      </div>
+                      <div style={{display: "flex", alignItems: "center", gap: 6}}>
+                        <span style={{width: 16, height: 4, background: "#bfaee5", borderRadius: 2, display: "inline-block"}}></span>
+                        <span style={{fontSize: 14, color: "#222"}}>в работе</span>
+                      </div>
+                      <div style={{display: "flex", alignItems: "center", gap: 6}}>
+                        <span style={{width: 16, height: 4, background: "#e5bfd2", borderRadius: 2, display: "inline-block"}}></span>
+                        <span style={{fontSize: 14, color: "#222"}}>завершённые</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
-          </div>
-        </div>
-      )}
+          )}
 
+          {/* Страница сотрудников */}
+          {activeTab === "employees" && (
+            <div style={{width: 900, minHeight: 600, background: "#fff", borderRadius: 32, boxShadow: "0 8px 32px rgba(0,0,0,0.10)", padding: 48, margin: "40px auto"}}>
+              {/* ...контент страницы сотрудников (можно вынести из employeesModal)... */}
+              <h1 className="modal-title">СОТРУДНИКИ</h1>
+              <div className="modal-list">
+                {employees.map((emp, idx) => (
+                  <div className="modal-list-item employee" key={idx}>
+                    <span className="employee-avatar"></span>
+                    <span className="employee-name">{emp.name}</span>
+                    <span className="employee-role">({emp.role})</span>
+                    <button
+                      className="employee-edit"
+                      onClick={() => handleEditEmployee(idx)}
+                      title="Редактировать"
+                    >✏️</button>
+                    <button
+                      className="employee-delete"
+                      onClick={() => handleDeleteEmployee(idx)}
+                      title="Удалить"
+                    >🗑️</button>
+                  </div>
+                ))}
+                <button className="modal-list-item add" onClick={() => setEmployeeForm(true)}>
+                  <span className="employee-add-plus">+</span> Добавить сотрудника
+                </button>
+                {employeeForm && (
+                  <div className="modal-form">
+                    <input
+                      value={employeeName}
+                      onChange={e => setEmployeeName(e.target.value)}
+                      placeholder="Имя"
+                    />
+                    <input
+                      value={employeeRole}
+                      onChange={e => setEmployeeRole(e.target.value)}
+                      placeholder="Должность"
+                    />
+                    <button onClick={handleSaveEmployee}>Сохранить</button>
+                    <button onClick={() => setEmployeeForm(false)}>Отмена</button>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Страница отчетов */}
+          {activeTab === "reports" && (
+            <div style={{width: 1200, minHeight: 700, background: "#fff", borderRadius: 32, boxShadow: "0 8px 32px rgba(0,0,0,0.10)", padding: 48, margin: "40px auto"}}>
+              {/* ...контент страницы отчетов (можно вынести из reportsModal)... */}
+              <div className="modal" style={{minWidth: 600, minHeight: 400, maxWidth: 900, alignItems: "flex-start"}}>
+                <div style={{display: "flex", width: "100%", justifyContent: "space-between", alignItems: "center", marginBottom: 18}}>
+                  <div style={{fontWeight: 700, fontSize: 26}}>ОТЧЕТЫ</div>
+                  <button
+                    style={{
+                      fontSize: 28,
+                      background: "none",
+                      border: "none",
+                      color: "#555",
+                      cursor: "pointer"
+                    }}
+                    title="Закрыть"
+                    onClick={() => setReportsModal(false)}
+                  >×</button>
+                </div>
+                <div style={{display: "flex", gap: 18, marginBottom: 18, width: "100%"}}>
+                  <button
+                    style={{
+                      border: "none",
+                      background: reportsTab === "summary" ? "#bfe5c6" : "#f3f3f3",
+                      color: "#222",
+                      fontWeight: reportsTab === "summary" ? 700 : 500,
+                      borderRadius: 10,
+                      padding: "8px 18px",
+                      cursor: "pointer"
+                    }}
+                    onClick={() => setReportsTab("summary")}
+                  >Общий</button>
+                  <button
+                    style={{
+                      border: "none",
+                      background: reportsTab === "tables" ? "#bfe5c6" : "#f3f3f3",
+                      color: "#222",
+                      fontWeight: reportsTab === "tables" ? 700 : 500,
+                      borderRadius: 10,
+                      padding: "8px 18px",
+                      cursor: "pointer"
+                    }}
+                    onClick={() => setReportsTab("tables")}
+                  >Таблицы</button>
+                  <button
+                    style={{
+                      border: "none",
+                      background: reportsTab === "employeeTasks" ? "#bfe5c6" : "#f3f3f3",
+                      color: "#222",
+                      fontWeight: reportsTab === "employeeTasks" ? 700 : 500,
+                      borderRadius: 10,
+                      padding: "8px 18px",
+                      cursor: "pointer"
+                    }}
+                    onClick={() => setReportsTab("employeeTasks")}
+                  >Задачи сотрудников</button>
+                  <button
+                    style={{
+                      border: "none",
+                      background: reportsTab === "columnTime" ? "#bfe5c6" : "#f3f3f3",
+                      color: "#222",
+                      fontWeight: reportsTab === "columnTime" ? 700 : 500,
+                      borderRadius: 10,
+                      padding: "8px 18px",
+                      cursor: "pointer"
+                    }}
+                    onClick={() => setReportsTab("columnTime")}
+                  >Время в колонках</button>
+                </div>
+                <div style={{width: "100%", minHeight: 200}}>
+                  {reportsTab === "summary" && (
+                    <div>
+                      <div style={{display: "flex", alignItems: "center", gap: 16, marginBottom: 24}}>
+                        <label htmlFor="reportType" style={{fontWeight: 500, fontSize: 16}}>Тип отчета:</label>
+                        <select
+                          id="reportType"
+                          value={reportType}
+                          onChange={e => setReportType(e.target.value as any)}
+                          style={{
+                            fontSize: 16,
+                            borderRadius: 8,
+                            padding: "6px 12px",
+                            border: "1px solid #ccc",
+                            background: "#fff",
+                            minWidth: 180
+                          }}
+                        >
+                          <option value="projects">По проектам</option>
+                          <option value="departments">По отделам</option>
+                          <option value="people">По людям</option>
+                        </select>
+                        <button
+                          style={{
+                            marginLeft: 24,
+                            background: "#1976d2",
+                            color: "#fff",
+                            border: "none",
+                            borderRadius: 8,
+                            padding: "8px 18px",
+                            fontWeight: 600,
+                            cursor: "pointer"
+                          }}
+                          onClick={handleDownloadReport}
+                        >
+                          Скачать отчет
+                        </button>
+                      </div>
+                      <div>
+                        {/* Отчет по проектам */}
+                        {reportType === "projects" && (
+                          <div style={{overflowX: "auto"}}>
+                            <table style={{borderCollapse: "collapse", width: "100%", minWidth: 520}}>
+                              <thead>
+                                <tr>
+                                  <th style={{borderBottom: "2px solid #bfe5c6", padding: "8px 12px", textAlign: "left"}}>Проект</th>
+                                  <th style={{borderBottom: "2px solid #bfe5c6", padding: "8px 12px", textAlign: "left"}}>Открытых задач</th>
+                                  <th style={{borderBottom: "2px solid #bfe5c6", padding: "8px 12px", textAlign: "left"}}>Выполненных задач</th>
+                                  {/* Пользовательские колонки */}
+                                  {customProjectColumns.map((col, idx) => (
+                                    <th key={idx} style={{borderBottom: "2px solid #bfe5c6", padding: "8px 12px", textAlign: "left"}}>
+                                      {col}
+                                    </th>
+                                  ))}
+                                  <th style={{padding: "8px 12px"}}>
+                                    <button
+                                      style={{
+                                        background: "#e0f7fa",
+                                        border: "1px dashed #1976d2",
+                                        borderRadius: 6,
+                                        color: "#1976d2",
+                                        fontWeight: 600,
+                                        cursor: "pointer",
+                                        padding: "4px 10px"
+                                      }}
+                                      onClick={() => setShowAddColumnInput(true)}
+                                    >+ Добавить колонку</button>
+                                  </th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {projects.map((project, idx) => {
+                                  const openTasks = project.tasks.filter(t => t.status === "new" || t.status === "in_progress").length;
+                                  const doneTasks = project.tasks.filter(t => t.status === "done").length;
+                                  return (
+                                    <tr key={idx} style={{background: idx % 2 === 0 ? "#f9f9f9" : "#fff"}}>
+                                      <td style={{padding: "8px 12px"}}>{project.name}</td>
+                                      <td style={{padding: "8px 12px"}}>{openTasks}</td>
+                                      <td style={{padding: "8px 12px"}}>{doneTasks}</td>
+                                      {/* Пользовательские колонки (пустые значения) */}
+                                      {customProjectColumns.map((col, cidx) => (
+                                        <td key={cidx} style={{padding: "8px 12px"}}></td>
+                                      ))}
+                                      <td></td>
+                                    </tr>
+                                  );
+                                })}
+                                {/* Строка для добавления новой колонки */}
+                                {showAddColumnInput && (
+                                  <tr>
+                                    <td colSpan={3 + customProjectColumns.length + 1} style={{padding: "8px 12px"}}>
+                                      <input
+                                        type="text"
+                                        value={newColumnName}
+                                        onChange={e => setNewColumnName(e.target.value)}
+                                        placeholder="Название новой колонки"
+                                        style={{
+                                          fontSize: 15,
+                                          borderRadius: 6,
+                                          border: "1px solid #ccc",
+                                          padding: "6px 12px",
+                                          marginRight: 8
+                                        }}
+                                        autoFocus
+                                        onKeyDown={e => {
+                                          if (e.key === "Enter" && newColumnName.trim()) {
+                                            setCustomProjectColumns(cols => [...cols, newColumnName.trim()]);
+                                            setNewColumnName("");
+                                            setShowAddColumnInput(false);
+                                          } else if (e.key === "Escape") {
+                                            setShowAddColumnInput(false);
+                                            setNewColumnName("");
+                                          }
+                                        }}
+                                      />
+                                      <button
+                                        style={{
+                                          background: "#1976d2",
+                                          color: "#fff",
+                                          border: "none",
+                                          borderRadius: 6,
+                                          padding: "6px 14px",
+                                          fontWeight: 600,
+                                          cursor: "pointer",
+                                          marginRight: 8
+                                        }}
+                                        disabled={!newColumnName.trim()}
+                                        onClick={() => {
+                                          if (newColumnName.trim()) {
+                                            setCustomProjectColumns(cols => [...cols, newColumnName.trim()]);
+                                            setNewColumnName("");
+                                            setShowAddColumnInput(false);
+                                          }
+                                        }}
+                                      >Добавить</button>
+                                      <button
+                                        style={{
+                                          background: "#eee",
+                                          color: "#555",
+                                          border: "none",
+                                          borderRadius: 6,
+                                          padding: "6px 14px",
+                                          fontWeight: 500,
+                                          cursor: "pointer"
+                                        }}
+                                        onClick={() => {
+                                          setShowAddColumnInput(false);
+                                          setNewColumnName("");
+                                        }}
+                                      >Отмена</button>
+                                    </td>
+                                  </tr>
+                                )}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
+                        {/* ...existing code for departments/people */}
+                        {reportType === "departments" && (
+                          <div style={{color: "#888", fontSize: 16}}>Здесь будет отчет по отделам.</div>
+                        )}
+                        {reportType === "people" && (
+                          <div style={{color: "#888", fontSize: 16}}>Здесь будет отчет по людям.</div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                  {reportsTab === "tables" && (
+                    <div>Здесь будут таблицы.</div>
+                  )}
+                  {reportsTab === "employeeTasks" && (
+                    <div>Здесь будут задачи сотрудников.</div>
+                  )}
+                  {reportsTab === "columnTime" && (
+                    <div>Здесь будет время в колонках.</div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+      {/* Удалить все модальные окна для проектов, статистики, сотрудников, отчетов */}
+      {/* ...оставить только модальное окно профиля и окно выбранного проекта, если нужно... */}
       {/* Модальное окно профиля пользователя */}
       {profileModal && (
         <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) setProfileModal(false); }}>
