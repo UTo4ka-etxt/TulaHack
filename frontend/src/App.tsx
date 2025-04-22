@@ -105,6 +105,15 @@ const App: React.FC = () => {
   const bigPieChartRef = useRef<HTMLCanvasElement | null>(null);
   const bigPieChartInstance = useRef<Chart | null>(null);
 
+  const [profileModal, setProfileModal] = useState(false);
+
+  // Для примера: текущий пользователь
+  const currentUser = {
+    name: "Петров Петр",
+    email: "petrov@example.com",
+    avatar: "https://ui-avatars.com/api/?name=Петров+Петр&background=1976d2&color=fff&size=128"
+  };
+
   useEffect(() => {
     if (statsModal && bigPieChartRef.current) {
       const pieData = getProjectStatsPieData();
@@ -417,7 +426,12 @@ const App: React.FC = () => {
                 />
                 {status ? "Работаю" : "Отдыхаю"}
               </span>
-              <i className="fa-regular fa-user account-icon" />
+              <i
+                className="fa-regular fa-user account-icon"
+                style={{ cursor: "pointer" }}
+                title="Профиль"
+                onClick={() => setProfileModal(true)}
+              />
               <i className="fa-regular fa-bell notifications" />
             </div>
           </header>
@@ -754,6 +768,72 @@ const App: React.FC = () => {
                   </div>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Модальное окно профиля пользователя */}
+      {profileModal && (
+        <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) setProfileModal(false); }}>
+          <div className="modal" style={{minWidth: 420, minHeight: 340, alignItems: "flex-start", maxWidth: 600}}>
+            <div style={{display: "flex", alignItems: "center", width: "100%", marginBottom: 18}}>
+              <img
+                src={currentUser.avatar}
+                alt="avatar"
+                style={{
+                  width: 80,
+                  height: 80,
+                  borderRadius: "50%",
+                  marginRight: 24,
+                  border: "3px solid #1976d2",
+                  background: "#fff"
+                }}
+              />
+              <div>
+                <div style={{fontWeight: 700, fontSize: 22, marginBottom: 4}}>{currentUser.name}</div>
+                <div style={{fontSize: 16, color: "#555"}}>{currentUser.email}</div>
+              </div>
+              <button
+                style={{
+                  marginLeft: "auto",
+                  fontSize: 28,
+                  background: "none",
+                  border: "none",
+                  color: "#555",
+                  cursor: "pointer"
+                }}
+                title="Закрыть"
+                onClick={() => setProfileModal(false)}
+              >×</button>
+            </div>
+            <div style={{width: "100%", marginTop: 10}}>
+              <div style={{fontWeight: 600, fontSize: 18, marginBottom: 8}}>Проекты и задачи</div>
+              {projects.filter(p => p.team.includes(currentUser.name)).length === 0 ? (
+                <div style={{color: "#888", fontSize: 15}}>Нет проектов</div>
+              ) : (
+                projects.filter(p => p.team.includes(currentUser.name)).map((project, idx) => (
+                  <div key={idx} style={{marginBottom: 18}}>
+                    <div style={{fontWeight: 600, fontSize: 16, marginBottom: 4, color: "#1976d2"}}>
+                      {project.name}
+                    </div>
+                    <ul style={{marginLeft: 0, paddingLeft: 18, fontSize: 15, color: "#222"}}>
+                      {project.tasks.filter(t => t.assignee === currentUser.name).length === 0 ? (
+                        <li style={{color: "#aaa"}}>Нет задач</li>
+                      ) : (
+                        project.tasks.filter(t => t.assignee === currentUser.name).map(t => (
+                          <li key={t.id}>
+                            <span style={{fontWeight: 500}}>{t.title}</span>
+                            {t.status === "done" && <span style={{color: "#4CAF50", marginLeft: 8}}>(готово)</span>}
+                            {t.status === "in_progress" && <span style={{color: "#bfaee5", marginLeft: 8}}>(в работе)</span>}
+                            {t.status === "new" && <span style={{color: "#bfe5c6", marginLeft: 8}}>(новая)</span>}
+                          </li>
+                        ))
+                      )}
+                    </ul>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </div>
