@@ -43,6 +43,7 @@ const App: React.FC = () => {
   const [projects, setProjects] = useState([
     {
       name: "Проект 1",
+      description: "Описание проекта 1",
       date: "2025-06-15",
       tasks: [
         { id: 1, title: "Задача 1", status: "new", description: "", assignee: "" },
@@ -54,6 +55,7 @@ const App: React.FC = () => {
     },
     {
       name: "Проект 2",
+      description: "Описание проекта 2",
       date: "2025-06-20",
       tasks: [
         { id: 4, title: "Задача 4", status: "new", description: "", assignee: "" }
@@ -63,6 +65,7 @@ const App: React.FC = () => {
     },
     {
       name: "Проект 3",
+      description: "Описание проекта 3",
       date: "2025-06-25",
       tasks: [],
       team: [],
@@ -74,6 +77,9 @@ const App: React.FC = () => {
   const [selectedProjectIdx, setSelectedProjectIdx] = useState<number | null>(null);
   const [projectForm, setProjectForm] = useState(false);
   const [projectName, setProjectName] = useState("");
+  const [projectDescription, setProjectDescription] = useState(""); // новое состояние для описания при создании
+  const [editProjectIdx, setEditProjectIdx] = useState<number | null>(null); // индекс редактируемого проекта
+  const [editProjectDescription, setEditProjectDescription] = useState(""); // новое описание при редактировании
   const [employeesModal, setEmployeesModal] = useState(false);
   const [employees, setEmployees] = useState(initialEmployees);
   const [employeeForm, setEmployeeForm] = useState(false);
@@ -292,6 +298,7 @@ const App: React.FC = () => {
         ...projects,
         {
           name: projectName.trim(),
+          description: projectDescription.trim(),
           date: new Date().toISOString().slice(0, 10),
           tasks: [],
           team: [],
@@ -299,6 +306,7 @@ const App: React.FC = () => {
         }
       ]);
       setProjectName("");
+      setProjectDescription("");
       setProjectForm(false);
     }
   };
@@ -310,6 +318,15 @@ const App: React.FC = () => {
     if (selectedProjectIdx === idx) setSelectedProjectIdx(null);
     // Если удаляемый проект был активен на главной, сбросить активный
     if (activeProject === idx) setActiveProject(null);
+  };
+
+  // Сохранить новое описание проекта
+  const handleSaveProjectDescription = (idx: number) => {
+    const arr = [...projects];
+    arr[idx].description = editProjectDescription;
+    setProjects(arr);
+    setEditProjectIdx(null);
+    setEditProjectDescription("");
   };
 
   // Добавление/редактирование сотрудника
@@ -577,31 +594,94 @@ const App: React.FC = () => {
                   <div
                     key={idx}
                     className="modal-list-item"
-                    style={{display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8}}
+                    style={{display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 4, position: "relative"}}
                   >
-                    <span
-                      style={{flex: 1, cursor: "pointer"}}
-                      onClick={() => {
-                        setSelectedProjectIdx(idx);
-                        setProjectsModal(false);
-                      }}
-                    >
-                      {project.name}
-                    </span>
-                    <button
-                      style={{
-                        background: "none",
-                        border: "none",
-                        color: "#c00",
-                        fontSize: 18,
-                        cursor: "pointer",
-                        marginLeft: 8
-                      }}
-                      title="Удалить проект"
-                      onClick={() => handleDeleteProject(idx)}
-                    >
-                      <i className="fa-solid fa-trash"></i>
-                    </button>
+                    <div style={{display: "flex", alignItems: "center", width: "100%"}}>
+                      <span
+                        style={{flex: 1, cursor: "pointer", fontWeight: 600, fontSize: 18}}
+                        onClick={() => {
+                          setSelectedProjectIdx(idx);
+                          setProjectsModal(false);
+                        }}
+                      >
+                        {project.name}
+                      </span>
+                      <button
+                        style={{
+                          background: "none",
+                          border: "none",
+                          color: "#c00",
+                          fontSize: 18,
+                          cursor: "pointer",
+                          marginLeft: 8
+                        }}
+                        title="Удалить проект"
+                        onClick={() => handleDeleteProject(idx)}
+                      >
+                        <i className="fa-solid fa-trash"></i>
+                      </button>
+                    </div>
+                    {/* Описание проекта */}
+                    {editProjectIdx === idx ? (
+                      <div style={{width: "100%", marginTop: 4}}>
+                        <textarea
+                          value={editProjectDescription}
+                          onChange={e => setEditProjectDescription(e.target.value)}
+                          placeholder="Описание проекта"
+                          style={{width: "100%", minHeight: 48, fontSize: 15, borderRadius: 8, padding: 6, marginBottom: 4}}
+                          autoFocus
+                        />
+                        <div style={{display: "flex", gap: 8}}>
+                          <button
+                            style={{
+                              background: "#1976d2",
+                              color: "#fff",
+                              border: "none",
+                              borderRadius: 6,
+                              padding: "6px 14px",
+                              fontWeight: 600,
+                              cursor: "pointer"
+                            }}
+                            onClick={() => handleSaveProjectDescription(idx)}
+                          >Сохранить</button>
+                          <button
+                            style={{
+                              background: "#eee",
+                              color: "#555",
+                              border: "none",
+                              borderRadius: 6,
+                              padding: "6px 14px",
+                              fontWeight: 500,
+                              cursor: "pointer"
+                            }}
+                            onClick={() => {
+                              setEditProjectIdx(null);
+                              setEditProjectDescription("");
+                            }}
+                          >Отмена</button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div style={{width: "100%", color: "#555", fontSize: 15, marginTop: 2, marginBottom: 2, whiteSpace: "pre-line"}}>
+                        {project.description || <span style={{color: "#bbb"}}>Нет описания</span>}
+                        <button
+                          style={{
+                            background: "none",
+                            border: "none",
+                            color: "#1976d2",
+                            fontSize: 15,
+                            marginLeft: 8,
+                            cursor: "pointer",
+                            textDecoration: "underline"
+                          }}
+                          title="Редактировать описание"
+                          onClick={() => {
+                            setEditProjectIdx(idx);
+                            setEditProjectDescription(project.description || "");
+                          }}
+                        >Редактировать</button>
+                      </div>
+                    )}
                   </div>
                 ))}
                 <button className="modal-list-item add" onClick={() => setProjectForm(true)}>
@@ -615,8 +695,14 @@ const App: React.FC = () => {
                     onChange={e => setProjectName(e.target.value)}
                     placeholder="Название проекта"
                   />
+                  <textarea
+                    value={projectDescription}
+                    onChange={e => setProjectDescription(e.target.value)}
+                    placeholder="Описание проекта"
+                    style={{width: "100%", minHeight: 48, fontSize: 15, borderRadius: 8, padding: 6, marginTop: 8}}
+                  />
                   <button onClick={handleAddProject}>Добавить</button>
-                  <button onClick={() => setProjectForm(false)}>Отмена</button>
+                  <button onClick={() => { setProjectForm(false); setProjectName(""); setProjectDescription(""); }}>Отмена</button>
                 </div>
               )}
             </div>
