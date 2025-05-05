@@ -78,4 +78,3 @@ python main.py
 <p align="center">
   <b>Project Planner — ваш помощник в управлении проектами!</b>
 </p>
-

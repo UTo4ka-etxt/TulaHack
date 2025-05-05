@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useLayoutEffect } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import "./styles/index.css";
 import Chart from "chart.js/auto";
 
@@ -13,7 +13,6 @@ const FontAwesomeLink = () => (
 const sidebarItems = [
   { icon: "fa-gear", label: "настройки" },
   { icon: "fa-diagram-project", label: "проекты" },
-  { icon: "fa-chart-line", label: "статистика" },
   { icon: "fa-id-card", label: "команда" },
   { icon: "fa-file-lines", label: "отчеты" } // добавлено
 ];
@@ -44,6 +43,7 @@ const App: React.FC = () => {
   const [projects, setProjects] = useState([
     {
       name: "Проект 1",
+      description: "Описание проекта 1",
       date: "2025-06-15",
       tasks: [
         { id: 1, title: "Задача 1", status: "new", description: "", assignee: "" },
@@ -55,6 +55,7 @@ const App: React.FC = () => {
     },
     {
       name: "Проект 2",
+      description: "Описание проекта 2",
       date: "2025-06-20",
       tasks: [
         { id: 4, title: "Задача 4", status: "new", description: "", assignee: "" }
@@ -64,6 +65,7 @@ const App: React.FC = () => {
     },
     {
       name: "Проект 3",
+      description: "Описание проекта 3",
       date: "2025-06-25",
       tasks: [],
       team: [],
@@ -75,9 +77,9 @@ const App: React.FC = () => {
   const [selectedProjectIdx, setSelectedProjectIdx] = useState<number | null>(null);
   const [projectForm, setProjectForm] = useState(false);
   const [projectName, setProjectName] = useState("");
-  const [statsModal, setStatsModal] = useState(false);
-  const [statsTab, setStatsTab] = useState<"tasks" | "projects" | "time">("tasks");
-  const [statsProjectIdx, setStatsProjectIdx] = useState<number>(-1); // -1 = все проекты
+  const [projectDescription, setProjectDescription] = useState(""); // новое состояние для описания при создании
+  const [editProjectIdx, setEditProjectIdx] = useState<number | null>(null); // индекс редактируемого проекта
+  const [editProjectDescription, setEditProjectDescription] = useState(""); // новое описание при редактировании
   const [employeesModal, setEmployeesModal] = useState(false);
   const [employees, setEmployees] = useState(initialEmployees);
   const [employeeForm, setEmployeeForm] = useState(false);
@@ -123,125 +125,120 @@ const App: React.FC = () => {
   const [highlightedTaskId, setHighlightedTaskId] = useState<number | null>(null);
 
   const [reportsModal, setReportsModal] = useState(false);
-  const [reportsTab, setReportsTab] = useState<"summary"|"tables"|"employeeTasks"|"columnTime">("summary");
+  const [reportsTab, setReportsTab] = useState<"summary"|"tables"|"employeeTasks"|"columnTime"|"chart">("summary");
   const [reportType, setReportType] = useState<"projects"|"departments"|"people">("projects");
   // Для динамических пользовательских колонок в отчете по проектам
   const [customProjectColumns, setCustomProjectColumns] = useState<string[]>([]);
   const [showAddColumnInput, setShowAddColumnInput] = useState(false);
   const [newColumnName, setNewColumnName] = useState("");
 
-  const [activeTab, setActiveTab] = useState<null | "main" | "projects" | "stats" | "employees" | "reports">(null);
+  const [activeTab, setActiveTab] = useState<null | "main" | "projects" | "employees" | "reports">(null);
 
-  useLayoutEffect(() => {
-    if (activeTab === "stats" && statsTab === "projects") {
-      const ctx = document.getElementById("projectsChart") as HTMLCanvasElement | null;
-      if (ctx && ctx.offsetParent !== null) {
-        ctx.width = ctx.width; // очистка canvas
-        if ((window as any).projectsChartInstance) {
-          (window as any).projectsChartInstance.destroy();
-        }
-        const pieData = getProjectStatsPieData();
-        (window as any).projectsChartInstance = new Chart(ctx, {
-          type: "doughnut",
-          data: {
-            labels: pieData.labels,
-            datasets: [{
-              data: pieData.data,
-              backgroundColor: pieData.colors,
-              borderWidth: 0
-            }]
-          },
-          options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            cutout: "70%",
-            plugins: { legend: { position: "bottom" } }
-          }
-        });
-        ctx.dataset.rendered = "true";
-      }
-    }
-    return () => {
-      if ((window as any).projectsChartInstance) {
-        (window as any).projectsChartInstance.destroy();
-        (window as any).projectsChartInstance = null;
-      }
-    };
-  }, [activeTab, statsTab, statsProjectIdx, projects]);
+  // Удалить getProjectStatsPieData функцию
+  // const getProjectStatsPieData = () => { ... };
 
-  // Chart.js инициализация
-  // useEffect(() => {
-  //   if (statsModal) {
-  //     setTimeout(() => {
-  //       if (statsTab === "projects") {
-  //         const ctx = document.getElementById("projectsChart") as HTMLCanvasElement;
-  //         if (ctx) {
-  //           // Удаляем предыдущий график, если есть
-  //           if ((window as any).projectsChartInstance) {
-  //             (window as any).projectsChartInstance.destroy();
-  //           }
-  //           const pieData = getProjectStatsPieData();
-  //           (window as any).projectsChartInstance = new Chart(ctx, {
-  //             type: "doughnut",
-  //             data: {
-  //               labels: pieData.labels,
-  //               datasets: [{
-  //                 data: pieData.data,
-  //                 backgroundColor: pieData.colors,
-  //                 borderWidth: 0
-  //               }]
-  //             },
-  //             options: {
-  //               responsive: true,
-  //               maintainAspectRatio: false,
-  //               cutout: "70%",
-  //               plugins: { legend: { position: "bottom" } }
-  //             }
-  //           });
-  //           ctx.dataset.rendered = "true";
-  //         }
-  //       }
-  //       if (statsTab === "time") {
-  //         const ctx = document.getElementById("timeChart") as HTMLCanvasElement;
-  //         if (ctx && !ctx.dataset.rendered) {
-  //           new Chart(ctx, {
-  //             type: "bar",
-  //             data: {
-  //               labels: ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"],
-  //               datasets: [{
-  //                 label: "Часы",
-  //                 data: [6, 7, 8, 5, 6, 0, 0],
-  //                 backgroundColor: "#4CAF50",
-  //                 borderRadius: 4
-  //               }]
-  //             },
-  //             options: {
-  //               responsive: true,
-  //               maintainAspectRatio: false,
-  //               plugins: { legend: { display: false } }
-  //             }
-  //           });
-  //           ctx.dataset.rendered = "true";
-  //         }
-  //       }
-  //     }, 100);
-  //   }
-  //   // Чистим график при закрытии окна
-  //   return () => {
-  //     if ((window as any).projectsChartInstance) {
-  //       (window as any).projectsChartInstance.destroy();
-  //       (window as any).projectsChartInstance = null;
-  //     }
-  //   };
-  // }, [statsModal, statsTab, statsProjectIdx, projects]);
+  // Удалить пункт меню "статистика" из сайдбара
+  <aside className="sidebar">
+    <div
+      className="sidebar-item"
+      onClick={() => setActiveTab("main")}
+    >
+      <i className="fa-solid fa-house sidebar-icon" />
+      <span className="sidebar-text">главная</span>
+    </div>
+    <div
+      className="sidebar-item"
+      onClick={() => setActiveTab("projects")}
+    >
+      <i className="fa-solid fa-diagram-project sidebar-icon" />
+      <span className="sidebar-text">проекты</span>
+    </div>
+    <div
+      className="sidebar-item"
+      onClick={() => setActiveTab("employees")}
+    >
+      <i className="fa-solid fa-id-card sidebar-icon" />
+      <span className="sidebar-text">команда</span>
+    </div>
+    <div
+      className="sidebar-item"
+      onClick={() => setActiveTab("reports")}
+    >
+      <i className="fa-solid fa-file-lines sidebar-icon" />
+      <span className="sidebar-text">отчеты</span>
+    </div>
+  </aside>
 
-  // Получение данных для круговой диаграммы по проекту или всем проектам
-  const getProjectStatsPieData = () => {
+  // Удалить рендер страницы статистики
+  // {activeTab === "stats" && (
+  //   <div>...</div>
+  // )}
+
+  // Получение данных для круговой диаграммы по всем проектам
+  const getAllTasksPieData = () => {
     let tasks: any[] = [];
-    if (statsProjectIdx === -1) {
+    projects.forEach(p => tasks.push(...(p.tasks || [])));
+    const newCount = tasks.filter(t => t.status === "new" || t.status === "backlog" || t.status === "todo").length;
+    const inProgressCount = tasks.filter(t => t.status === "in_progress").length;
+    const doneCount = tasks.filter(t => t.status === "done").length;
+    return {
+      labels: ["Новые", "В работе", "Завершённые"],
+      data: [newCount, inProgressCount, doneCount],
+      colors: ["#bfe5c6", "#bfaee5", "#e5bfd2"]
+    };
+  };
+
+  // useEffect для круговой диаграммы в отчетах (вкладка "Диаграмма")
+  useEffect(() => {
+    if (activeTab === "reports" && reportsTab === "chart") {
+      const timeout = setTimeout(() => {
+        const ctx = document.getElementById("reportsPieChart") as HTMLCanvasElement | null;
+        if (ctx && ctx.offsetWidth >= 0 && ctx.offsetHeight >= 0) {
+          ctx.width = ctx.width;
+          if ((window as any).reportsPieChartInstance) {
+            (window as any).reportsPieChartInstance.destroy();
+          }
+          const pieData = getAllTasksPieData();
+          (window as any).reportsPieChartInstance = new Chart(ctx, {
+            type: "doughnut",
+            data: {
+              labels: pieData.labels,
+              datasets: [{
+                data: pieData.data,
+                backgroundColor: pieData.colors,
+                borderWidth: 0
+              }]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              cutout: "70%",
+              plugins: { legend: { position: "bottom" } }
+            }
+          });
+          ctx.dataset.rendered = "true";
+        }
+      }, 50);
+      return () => {
+        clearTimeout(timeout);
+        if ((window as any).reportsPieChartInstance) {
+          (window as any).reportsPieChartInstance.destroy();
+          (window as any).reportsPieChartInstance = null;
+        }
+      };
+    }
+  }, [activeTab, reportsTab, projects]);
+
+  // Для вкладки "Диаграмма" — выбор проекта
+  const [reportsChartProjectIdx, setReportsChartProjectIdx] = useState<number>(-1); // -1 = все проекты
+
+  // Получение данных для круговой диаграммы по выбранному проекту или всем проектам
+  const getPieDataForReportsChart = () => {
+    let tasks: any[] = [];
+    if (reportsChartProjectIdx === -1) {
       projects.forEach(p => tasks.push(...(p.tasks || [])));
-    } else if (projects[statsProjectIdx]) {
-      tasks = projects[statsProjectIdx].tasks || [];
+    } else if (projects[reportsChartProjectIdx]) {
+      tasks = projects[reportsChartProjectIdx].tasks || [];
     }
     const newCount = tasks.filter(t => t.status === "new" || t.status === "backlog" || t.status === "todo").length;
     const inProgressCount = tasks.filter(t => t.status === "in_progress").length;
@@ -253,51 +250,46 @@ const App: React.FC = () => {
     };
   };
 
-  // --- ДОБАВИТЬ useEffect для круговой диаграммы справа ---
+  // useEffect для круговой диаграммы в отчетах (вкладка "Диаграмма")
   useEffect(() => {
-    if (statsModal) {
-      setTimeout(() => {
-        const ctx = document.getElementById("allProjectsPie") as HTMLCanvasElement;
-        if (ctx) {
-          // Удаляем предыдущий график, если есть
-          if ((window as any).allProjectsPieInstance) {
-            (window as any).allProjectsPieInstance.destroy();
+    if (activeTab === "reports" && reportsTab === "chart") {
+      const timeout = setTimeout(() => {
+        const ctx = document.getElementById("reportsPieChart") as HTMLCanvasElement | null;
+        if (ctx && ctx.offsetWidth >= 0 && ctx.offsetHeight >= 0) {
+          ctx.width = ctx.width;
+          if ((window as any).reportsPieChartInstance) {
+            (window as any).reportsPieChartInstance.destroy();
           }
-          // Собираем все задачи всех проектов
-          let allTasks: any[] = [];
-          projects.forEach(p => allTasks.push(...p.tasks));
-          const newCount = allTasks.filter(t => t.status === "new" || t.status === "backlog" || t.status === "todo").length;
-          const inProgressCount = allTasks.filter(t => t.status === "in_progress").length;
-          const doneCount = allTasks.filter(t => t.status === "done").length;
-          (window as any).allProjectsPieInstance = new Chart(ctx, {
+          const pieData = getPieDataForReportsChart();
+          (window as any).reportsPieChartInstance = new Chart(ctx, {
             type: "doughnut",
             data: {
-              labels: ["Новые", "В работе", "Завершённые"],
+              labels: pieData.labels,
               datasets: [{
-                data: [newCount, inProgressCount, doneCount],
-                backgroundColor: ["#bfe5c6", "#bfaee5", "#e5bfd2"],
+                data: pieData.data,
+                backgroundColor: pieData.colors,
                 borderWidth: 0
               }]
             },
             options: {
-              responsive: false,
+              responsive: true,
               maintainAspectRatio: false,
               cutout: "70%",
-              plugins: { legend: { display: false } }
+              plugins: { legend: { position: "bottom" } }
             }
           });
           ctx.dataset.rendered = "true";
         }
-      }, 100);
+      }, 50);
+      return () => {
+        clearTimeout(timeout);
+        if ((window as any).reportsPieChartInstance) {
+          (window as any).reportsPieChartInstance.destroy();
+          (window as any).reportsPieChartInstance = null;
+        }
+      };
     }
-    // Чистим график при закрытии окна
-    return () => {
-      if ((window as any).allProjectsPieInstance) {
-        (window as any).allProjectsPieInstance.destroy();
-        (window as any).allProjectsPieInstance = null;
-      }
-    };
-  }, [statsModal, projects]);
+  }, [activeTab, reportsTab, projects, reportsChartProjectIdx]);
 
   // Добавление проекта
   const handleAddProject = () => {
@@ -306,6 +298,7 @@ const App: React.FC = () => {
         ...projects,
         {
           name: projectName.trim(),
+          description: projectDescription.trim(),
           date: new Date().toISOString().slice(0, 10),
           tasks: [],
           team: [],
@@ -313,6 +306,7 @@ const App: React.FC = () => {
         }
       ]);
       setProjectName("");
+      setProjectDescription("");
       setProjectForm(false);
     }
   };
@@ -324,6 +318,15 @@ const App: React.FC = () => {
     if (selectedProjectIdx === idx) setSelectedProjectIdx(null);
     // Если удаляемый проект был активен на главной, сбросить активный
     if (activeProject === idx) setActiveProject(null);
+  };
+
+  // Сохранить новое описание проекта
+  const handleSaveProjectDescription = (idx: number) => {
+    const arr = [...projects];
+    arr[idx].description = editProjectDescription;
+    setProjects(arr);
+    setEditProjectIdx(null);
+    setEditProjectDescription("");
   };
 
   // Добавление/редактирование сотрудника
@@ -423,13 +426,6 @@ const App: React.FC = () => {
           >
             <i className="fa-solid fa-diagram-project sidebar-icon" />
             <span className="sidebar-text">проекты</span>
-          </div>
-          <div
-            className="sidebar-item"
-            onClick={() => setActiveTab("stats")}
-          >
-            <i className="fa-solid fa-chart-line sidebar-icon" />
-            <span className="sidebar-text">статистика</span>
           </div>
           <div
             className="sidebar-item"
@@ -598,31 +594,94 @@ const App: React.FC = () => {
                   <div
                     key={idx}
                     className="modal-list-item"
-                    style={{display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8}}
+                    style={{display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 4, position: "relative"}}
                   >
-                    <span
-                      style={{flex: 1, cursor: "pointer"}}
-                      onClick={() => {
-                        setSelectedProjectIdx(idx);
-                        setProjectsModal(false);
-                      }}
-                    >
-                      {project.name}
-                    </span>
-                    <button
-                      style={{
-                        background: "none",
-                        border: "none",
-                        color: "#c00",
-                        fontSize: 18,
-                        cursor: "pointer",
-                        marginLeft: 8
-                      }}
-                      title="Удалить проект"
-                      onClick={() => handleDeleteProject(idx)}
-                    >
-                      <i className="fa-solid fa-trash"></i>
-                    </button>
+                    <div style={{display: "flex", alignItems: "center", width: "100%"}}>
+                      <span
+                        style={{flex: 1, cursor: "pointer", fontWeight: 600, fontSize: 18}}
+                        onClick={() => {
+                          setSelectedProjectIdx(idx);
+                          setProjectsModal(false);
+                        }}
+                      >
+                        {project.name}
+                      </span>
+                      <button
+                        style={{
+                          background: "none",
+                          border: "none",
+                          color: "#c00",
+                          fontSize: 18,
+                          cursor: "pointer",
+                          marginLeft: 8
+                        }}
+                        title="Удалить проект"
+                        onClick={() => handleDeleteProject(idx)}
+                      >
+                        <i className="fa-solid fa-trash"></i>
+                      </button>
+                    </div>
+                    {/* Описание проекта */}
+                    {editProjectIdx === idx ? (
+                      <div style={{width: "100%", marginTop: 4}}>
+                        <textarea
+                          value={editProjectDescription}
+                          onChange={e => setEditProjectDescription(e.target.value)}
+                          placeholder="Описание проекта"
+                          style={{width: "100%", minHeight: 48, fontSize: 15, borderRadius: 8, padding: 6, marginBottom: 4}}
+                          autoFocus
+                        />
+                        <div style={{display: "flex", gap: 8}}>
+                          <button
+                            style={{
+                              background: "#1976d2",
+                              color: "#fff",
+                              border: "none",
+                              borderRadius: 6,
+                              padding: "6px 14px",
+                              fontWeight: 600,
+                              cursor: "pointer"
+                            }}
+                            onClick={() => handleSaveProjectDescription(idx)}
+                          >Сохранить</button>
+                          <button
+                            style={{
+                              background: "#eee",
+                              color: "#555",
+                              border: "none",
+                              borderRadius: 6,
+                              padding: "6px 14px",
+                              fontWeight: 500,
+                              cursor: "pointer"
+                            }}
+                            onClick={() => {
+                              setEditProjectIdx(null);
+                              setEditProjectDescription("");
+                            }}
+                          >Отмена</button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div style={{width: "100%", color: "#555", fontSize: 15, marginTop: 2, marginBottom: 2, whiteSpace: "pre-line"}}>
+                        {project.description || <span style={{color: "#bbb"}}>Нет описания</span>}
+                        <button
+                          style={{
+                            background: "none",
+                            border: "none",
+                            color: "#1976d2",
+                            fontSize: 15,
+                            marginLeft: 8,
+                            cursor: "pointer",
+                            textDecoration: "underline"
+                          }}
+                          title="Редактировать описание"
+                          onClick={() => {
+                            setEditProjectIdx(idx);
+                            setEditProjectDescription(project.description || "");
+                          }}
+                        >Редактировать</button>
+                      </div>
+                    )}
                   </div>
                 ))}
                 <button className="modal-list-item add" onClick={() => setProjectForm(true)}>
@@ -636,157 +695,16 @@ const App: React.FC = () => {
                     onChange={e => setProjectName(e.target.value)}
                     placeholder="Название проекта"
                   />
+                  <textarea
+                    value={projectDescription}
+                    onChange={e => setProjectDescription(e.target.value)}
+                    placeholder="Описание проекта"
+                    style={{width: "100%", minHeight: 48, fontSize: 15, borderRadius: 8, padding: 6, marginTop: 8}}
+                  />
                   <button onClick={handleAddProject}>Добавить</button>
-                  <button onClick={() => setProjectForm(false)}>Отмена</button>
+                  <button onClick={() => { setProjectForm(false); setProjectName(""); setProjectDescription(""); }}>Отмена</button>
                 </div>
               )}
-            </div>
-          )}
-
-          {/* Страница статистики */}
-          {activeTab === "stats" && (
-            <div style={{width: 1200, minHeight: 700, background: "#fff", borderRadius: 32, boxShadow: "0 8px 32px rgba(0,0,0,0.10)", padding: 48, margin: "40px auto"}}>
-              {/* ...контент страницы статистики (можно вынести из statsModal)... */}
-              <div
-                style={{
-                  display: "flex",
-                  flexDirection: "row",
-                  background: "rgba(255,255,255,0.85)",
-                  borderRadius: 24,
-                  boxShadow: "0 8px 32px rgba(0,0,0,0.10)",
-                  minWidth: 900,
-                  minHeight: 540,
-                  padding: 36,
-                  gap: 36,
-                  alignItems: "flex-start"
-                }}
-              >
-                {/* Левая часть */}
-                <div style={{display: "flex", flexDirection: "column", gap: 32, minWidth: 320}}>
-                  {/* Проекты */}
-                  <div style={{
-                    background: "#f8faff",
-                    borderRadius: 18,
-                    boxShadow: "0 2px 12px rgba(0,0,0,0.06)",
-                    padding: 24,
-                    minWidth: 280,
-                    minHeight: 220,
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "flex-start"
-                  }}>
-                    <div style={{fontWeight: 600, fontSize: 18, marginBottom: 12}}>Проекты</div>
-                    {/* Выбор проекта */}
-                    <select
-                      value={statsProjectIdx}
-                      onChange={e => setStatsProjectIdx(Number(e.target.value))}
-                      style={{
-                        marginBottom: 18,
-                        borderRadius: 8,
-                        padding: "6px 12px",
-                        fontSize: 16,
-                        border: "1px solid #ccc",
-                        background: "#fff",
-                        minWidth: 180
-                      }}
-                    >
-                      <option value={-1}>Все проекты</option>
-                      {projects.map((p, idx) => (
-                        <option value={idx} key={idx}>{p.name}</option>
-                      ))}
-                    </select>
-                    {/* Удалить маленький график */}
-                    {/* <div style={{width: 110, height: 110, position: "relative", margin: "0 auto"}}>
-                      <canvas ref={pieChartRef} width={110} height={110} />
-                    </div> */}
-                    <div style={{display: "flex", flexDirection: "column", gap: 10, marginTop: 18}}>
-                      <div style={{display: "flex", alignItems: "center", gap: 8}}>
-                        <span style={{
-                          display: "inline-block",
-                          width: 18,
-                          height: 4,
-                          borderRadius: 2,
-                          background: "#bfe5c6"
-                        }}></span>
-                        <span style={{fontSize: 14, color: "#222"}}>новые задачи</span>
-                      </div>
-                      <div style={{display: "flex", alignItems: "center", gap: 8}}>
-                        <span style={{
-                          display: "inline-block",
-                          width: 18,
-                          height: 4,
-                          borderRadius: 2,
-                          background: "#bfaee5"
-                        }}></span>
-                        <span style={{fontSize: 14, color: "#222"}}>в работе</span>
-                      </div>
-                      <div style={{display: "flex", alignItems: "center", gap: 8}}>
-                        <span style={{
-                          display: "inline-block",
-                          width: 18,
-                          height: 4,
-                          borderRadius: 2,
-                          background: "#e5bfd2"
-                        }}></span>
-                        <span style={{fontSize: 14, color: "#222"}}>завершённые</span>
-                      </div>
-                    </div>
-                  </div>
-                  {/* Баги */}
-                  <div style={{
-                    background: "#f8faff",
-                    borderRadius: 18,
-                    boxShadow: "0 2px 12px rgba(0,0,0,0.06)",
-                    padding: 24,
-                    minWidth: 280,
-                    minHeight: 120,
-                    fontSize: 18,
-                    color: "#888"
-                  }}>
-                    Баги
-                  </div>
-                </div>
-                {/* Правая часть */}
-                <div style={{flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center"}}>
-                  <div style={{fontSize: 28, fontWeight: 600, marginBottom: 24, letterSpacing: 1}}>СТАТИСТИКА</div>
-                  {/* Большая круговая диаграмма, которая меняется при выборе проекта */}
-                  <div style={{
-                    width: 320,
-                    height: 320,
-                    background: "#fff",
-                    borderRadius: 24,
-                    boxShadow: "0 2px 12px rgba(0,0,0,0.06)",
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    padding: 24
-                  }}>
-                    <div style={{fontWeight: 600, fontSize: 20, marginBottom: 12}}>Соотношение задач</div>
-                    <canvas
-                      id="projectsChart"
-                      key={`projectsChart-${statsProjectIdx}-${projects[statsProjectIdx]?.tasks?.length ?? projects.reduce((acc, p) => acc + (p.tasks?.length || 0), 0)}`}
-                      width={220}
-                      height={220}
-                      style={{marginBottom: 16}}
-                    />
-                    <div style={{display: "flex", gap: 18, marginTop: 8}}>
-                      <div style={{display: "flex", alignItems: "center", gap: 6}}>
-                        <span style={{width: 16, height: 4, background: "#bfe5c6", borderRadius: 2, display: "inline-block"}}></span>
-                        <span style={{fontSize: 14, color: "#222"}}>новые</span>
-                      </div>
-                      <div style={{display: "flex", alignItems: "center", gap: 6}}>
-                        <span style={{width: 16, height: 4, background: "#bfaee5", borderRadius: 2, display: "inline-block"}}></span>
-                        <span style={{fontSize: 14, color: "#222"}}>в работе</span>
-                      </div>
-                      <div style={{display: "flex", alignItems: "center", gap: 6}}>
-                        <span style={{width: 16, height: 4, background: "#e5bfd2", borderRadius: 2, display: "inline-block"}}></span>
-                        <span style={{fontSize: 14, color: "#222"}}>завершённые</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
             </div>
           )}
 
@@ -838,9 +756,9 @@ const App: React.FC = () => {
 
           {/* Страница отчетов */}
           {activeTab === "reports" && (
-            <div style={{width: 1200, minHeight: 700, background: "#fff", borderRadius: 32, boxShadow: "0 8px 32px rgba(0,0,0,0.10)", padding: 48, margin: "40px auto"}}>
+            <div style={{width: 1600, minHeight: 300, background: "#fff", borderRadius: 32, boxShadow: "0 8px 32px rgba(0,0,0,0.10)", padding: 48, margin: "40px auto"}}>
               {/* ...контент страницы отчетов (можно вынести из reportsModal)... */}
-              <div className="modal" style={{minWidth: 600, minHeight: 400, maxWidth: 900, alignItems: "flex-start"}}>
+              <div className="modal" style={{minWidth: 1500, minHeight: 900, maxWidth: 900, alignItems: "flex-start"}}>
                 <div style={{display: "flex", width: "100%", justifyContent: "space-between", alignItems: "center", marginBottom: 18}}>
                   <div style={{fontWeight: 700, fontSize: 26}}>ОТЧЕТЫ</div>
                   <button
@@ -904,6 +822,18 @@ const App: React.FC = () => {
                     }}
                     onClick={() => setReportsTab("columnTime")}
                   >Время в колонках</button>
+                  <button
+                    style={{
+                      border: "none",
+                      background: reportsTab === "chart" ? "#bfe5c6" : "#f3f3f3",
+                      color: "#222",
+                      fontWeight: reportsTab === "chart" ? 700 : 500,
+                      borderRadius: 10,
+                      padding: "8px 18px",
+                      cursor: "pointer"
+                    }}
+                    onClick={() => setReportsTab("chart")}
+                  >Диаграмма</button>
                 </div>
                 <div style={{width: "100%", minHeight: 200}}>
                   {reportsTab === "summary" && (
@@ -1067,7 +997,126 @@ const App: React.FC = () => {
                           <div style={{color: "#888", fontSize: 16}}>Здесь будет отчет по отделам.</div>
                         )}
                         {reportType === "people" && (
-                          <div style={{color: "#888", fontSize: 16}}>Здесь будет отчет по людям.</div>
+                          <div style={{overflowX: "auto"}}>
+                            <table style={{borderCollapse: "collapse", width: "100%", minWidth: 520}}>
+                              <thead>
+                                <tr>
+                                  <th style={{borderBottom: "2px solid #bfe5c6", padding: "8px 12px", textAlign: "left"}}>Исполнитель задачи</th>
+                                  <th style={{borderBottom: "2px solid #bfe5c6", padding: "8px 12px", textAlign: "left"}}>Открытых задач</th>
+                                  <th style={{borderBottom: "2px solid #bfe5c6", padding: "8px 12px", textAlign: "left"}}>Выполненных задач</th>
+                                  {customProjectColumns.map((col, idx) => (
+                                    <th key={idx} style={{borderBottom: "2px solid #bfe5c6", padding: "8px 12px", textAlign: "left"}}>
+                                      {col}
+                                    </th>
+                                  ))}
+                                  <th style={{padding: "8px 12px"}}>
+                                    <button
+                                      style={{
+                                        background: "#e0f7fa",
+                                        border: "1px dashed #1976d2",
+                                        borderRadius: 6,
+                                        color: "#1976d2",
+                                        fontWeight: 600,
+                                        cursor: "pointer",
+                                        padding: "4px 10px"
+                                      }}
+                                      onClick={() => setShowAddColumnInput(true)}
+                                    >+ Добавить колонку</button>
+                                  </th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {employees.map((emp, idx) => {
+                                  // Подсчет задач по сотруднику
+                                  let openTasks = 0, doneTasks = 0;
+                                  projects.forEach(p => {
+                                    (p.tasks || []).forEach(t => {
+                                      if (t.assignee === emp.name) {
+                                        if (t.status === "done") doneTasks++;
+                                        else if (t.status === "new" || t.status === "in_progress") openTasks++;
+                                      }
+                                    });
+                                  });
+                                  return (
+                                    <tr key={emp.name} style={{background: idx % 2 === 0 ? "#f9f9f9" : "#fff"}}>
+                                      <td style={{padding: "8px 12px"}}>{emp.name}</td>
+                                      <td style={{padding: "8px 12px"}}>{openTasks}</td>
+                                      <td style={{padding: "8px 12px"}}>{doneTasks}</td>
+                                      {customProjectColumns.map((col, cidx) => (
+                                        <td key={cidx} style={{padding: "8px 12px"}}></td>
+                                      ))}
+                                      <td></td>
+                                    </tr>
+                                  );
+                                })}
+                                {showAddColumnInput && (
+                                  <tr>
+                                    <td colSpan={3 + customProjectColumns.length + 1} style={{padding: "8px 12px"}}>
+                                      <input
+                                        type="text"
+                                        value={newColumnName}
+                                        onChange={e => setNewColumnName(e.target.value)}
+                                        placeholder="Название новой колонки"
+                                        style={{
+                                          fontSize: 15,
+                                          borderRadius: 6,
+                                          border: "1px solid #ccc",
+                                          padding: "6px 12px",
+                                          marginRight: 8
+                                        }}
+                                        autoFocus
+                                        onKeyDown={e => {
+                                          if (e.key === "Enter" && newColumnName.trim()) {
+                                            setCustomProjectColumns(cols => [...cols, newColumnName.trim()]);
+                                            setNewColumnName("");
+                                            setShowAddColumnInput(false);
+                                          } else if (e.key === "Escape") {
+                                            setShowAddColumnInput(false);
+                                            setNewColumnName("");
+                                          }
+                                        }}
+                                      />
+                                      <button
+                                        style={{
+                                          background: "#1976d2",
+                                          color: "#fff",
+                                          border: "none",
+                                          borderRadius: 6,
+                                          padding: "6px 14px",
+                                          fontWeight: 600,
+                                          cursor: "pointer",
+                                          marginRight: 8
+                                        }}
+                                        disabled={!newColumnName.trim()}
+                                        onClick={() => {
+                                          if (newColumnName.trim()) {
+                                            setCustomProjectColumns(cols => [...cols, newColumnName.trim()]);
+                                            setNewColumnName("");
+                                            setShowAddColumnInput(false);
+                                          }
+                                        }}
+                                      >Добавить</button>
+                                      <button
+                                        style={{
+                                          background: "#eee",
+                                          color: "#555",
+                                          border: "none",
+                                          borderRadius: 6,
+                                          padding: "6px 14px",
+                                          fontWeight: 500,
+                                          cursor: "pointer"
+                                        }}
+                                        onClick={() => {
+                                          setShowAddColumnInput(false);
+                                          setNewColumnName("");
+                                        }}
+                                      >Отмена</button>
+                                    </td>
+                                  </tr>
+                                )}
+                              </tbody>
+                            </table>
+                          </div>
                         )}
                       </div>
                     </div>
@@ -1080,6 +1129,64 @@ const App: React.FC = () => {
                   )}
                   {reportsTab === "columnTime" && (
                     <div>Здесь будет время в колонках.</div>
+                  )}
+                  {reportsTab === "chart" && (
+                    <div style={{display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: 400}}>
+                      <div style={{fontWeight: 600, fontSize: 22, marginBottom: 18}}>Соотношение задач по всем проектам</div>
+                      <div style={{marginBottom: 18}}>
+                        <select
+                          value={reportsChartProjectIdx}
+                          onChange={e => setReportsChartProjectIdx(Number(e.target.value))}
+                          style={{
+                            borderRadius: 8,
+                            padding: "8px 16px",
+                            fontSize: 16,
+                            border: "1px solid #ccc",
+                            background: "#fff",
+                            minWidth: 180
+                          }}
+                        >
+                          <option value={-1}>Все проекты</option>
+                          {projects.map((p, idx) => (
+                            <option value={idx} key={idx}>{p.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div style={{
+                        width: 600,
+                        height: 600,
+                        background: "#fff",
+                        borderRadius: 24,
+                        boxShadow: "0 2px 12px rgba(0,0,0,0.06)",
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        padding: 24
+                      }}>
+                        <canvas
+                          id="reportsPieChart"
+                          key={`reportsPieChart-${reportsChartProjectIdx}-${projects[reportsChartProjectIdx]?.tasks?.length ?? projects.reduce((acc, p) => acc + (p.tasks?.length || 0), 0)}`}
+                          width={400}
+                          height={400}
+                          style={{marginBottom: 16}}
+                        />
+                        <div style={{display: "flex", gap: 18, marginTop: 8}}>
+                          <div style={{display: "flex", alignItems: "center", gap: 6}}>
+                            <span style={{width: 16, height: 4, background: "#bfe5c6", borderRadius: 2, display: "inline-block"}}></span>
+                            <span style={{fontSize: 14, color: "#222"}}>новые</span>
+                          </div>
+                          <div style={{display: "flex", alignItems: "center", gap: 6}}>
+                            <span style={{width: 16, height: 4, background: "#bfaee5", borderRadius: 2, display: "inline-block"}}></span>
+                            <span style={{fontSize: 14, color: "#222"}}>в работе</span>
+                          </div>
+                          <div style={{display: "flex", alignItems: "center", gap: 6}}>
+                            <span style={{width: 16, height: 4, background: "#e5bfd2", borderRadius: 2, display: "inline-block"}}></span>
+                            <span style={{fontSize: 14, color: "#222"}}>завершённые</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   )}
                 </div>
               </div>
